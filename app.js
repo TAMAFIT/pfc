@@ -57,6 +57,10 @@ function toggleAlcMode(isInit = false) {
     if (mtrA) mtrA.style.display = TG.alcMode ? 'block' : 'none';
     if (maWrap) maWrap.style.display = TG.alcMode ? 'block' : 'none';
     upd(); ren();
+    if (!isInit) {
+        if (typeof rHist === 'function' && document.getElementById('hist-area').style.display === 'block') rHist();
+        if (typeof drawGraph === 'function' && document.getElementById('graph-area').style.display === 'block') { const actBtn = document.querySelector('.g-btn.act'); if(actBtn) drawGraph(actBtn.innerText.includes('月') ? 'month' : 'week', actBtn); }
+    }
 }
 
 function mkCat() {
@@ -165,7 +169,7 @@ function ren() {
         let tCal = 0, tP = 0, tF = 0, tC = 0, tA = 0; items.forEach(x => { tCal += x.Cal; tP += x.P; tF += x.F; tC += x.C; tA += (x.A || 0); totalCal += x.Cal; });
         const sec = document.createElement('div'); sec.className = 'tl-sec'; let aStr = (TG.alcMode && tA > 0) ? ` <span style="color:var(--my)">A${tA.toFixed(0)}</span>` : "";
         sec.innerHTML = `<div class="tl-head ${t}"><div>${emojis[t]} ${t}</div><div class="tl-stats">${tCal}kcal (P${tP.toFixed(0)} F${tF.toFixed(0)} C${tC.toFixed(0)}${aStr})</div></div><ul class="f-list">${items.map(x => {
-            let aTag = (TG.alcMode && x.A > 0) ? ` <span style="color:var(--my)">A${x.A.toFixed(1)}</span>` : ""; let isAlcClass = (x.A > 0) ? "alc" : "";
+            let aTag = (TG.alcMode && x.A > 0) ? ` <span style="color:var(--my)">A${x.A.toFixed(1)}</span>` : ""; let isAlcClass = (TG.alcMode && x.A > 0) ? "alc" : "";
             return `<li class="f-item ${isAlcClass}"><div><strong>${x.N}</strong> <small>${x.U}</small><br><span style="font-size:12px;color:#666">${x.Cal}kcal (P${x.P.toFixed(1)} F${x.F.toFixed(1)} C${x.C.toFixed(1)}${aTag})</span></div><div class="act-btns"><button class="l-btn b-re" onclick="reAdd(${x.i})">複製</button><button class="l-btn b-ed" onclick="ed(${x.i})">編集</button><button class="l-btn b-del" onclick="del(${x.i})">消去</button></div></li>`;
         }).join('')}</ul>`; tlArea.appendChild(sec);
     });
@@ -212,7 +216,8 @@ function rHist() {
     hist.forEach((h, i) => {
         const foodsHtml = h.l.map(f => `<div class="hf-row"><span class="hf-name">${f.time ? `[${f.time}] ` : ''}${f.N}</span><span class="hf-vals">${f.Cal}kcal</span></div>`).join('');
         const c = document.createElement('div'); c.className = 'h-card-wrap';
-        c.innerHTML = `<div class="h-card"><div class="h-summary" onclick="document.getElementById('h-det-${i}').style.display = document.getElementById('h-det-${i}').style.display === 'block' ? 'none' : 'block'"><div class="h-info"><div><span class="h-date">${h.d}</span> <span class="h-meta">${h.s.Cal}kcal</span></div><div class="h-meta" style="font-size:10px;">(P${h.s.P.toFixed(0)} F${h.s.F.toFixed(0)} C${h.s.C.toFixed(0)})</div><div class="h-toggle-hint">▼ 詳細</div></div><div class="h-btns"><button class="h-btn h-b-res" onclick="event.stopPropagation(); resHist(${i})">復元</button><button class="h-btn h-b-cp" onclick="event.stopPropagation(); cpHist(${i})">コピー</button><button class="h-btn h-b-del" onclick="event.stopPropagation(); delHist(${i})">削除</button></div></div><div id="h-det-${i}" class="h-detail">${foodsHtml}</div></div>`; d.appendChild(c);
+        let hAStr = (TG.alcMode && h.s.A > 0) ? ` A${h.s.A.toFixed(0)}` : "";
+        c.innerHTML = `<div class="h-card"><div class="h-summary" onclick="document.getElementById('h-det-${i}').style.display = document.getElementById('h-det-${i}').style.display === 'block' ? 'none' : 'block'"><div class="h-info"><div><span class="h-date">${h.d}</span> <span class="h-meta">${h.s.Cal}kcal</span></div><div class="h-meta" style="font-size:10px;">(P${h.s.P.toFixed(0)} F${h.s.F.toFixed(0)} C${h.s.C.toFixed(0)}${hAStr})</div><div class="h-toggle-hint">▼ 詳細</div></div><div class="h-btns"><button class="h-btn h-b-res" onclick="event.stopPropagation(); resHist(${i})">復元</button><button class="h-btn h-b-cp" onclick="event.stopPropagation(); cpHist(${i})">コピー</button><button class="h-btn h-b-del" onclick="event.stopPropagation(); delHist(${i})">削除</button></div></div><div id="h-det-${i}" class="h-detail">${foodsHtml}</div></div>`; d.appendChild(c);
     });
 }
 
@@ -337,14 +342,15 @@ function drawGraph(type, btn) {
 
         let segHtml = `<div class="seg-p" style="height:${(d.s.P * 4 / totalCal) * 100}%;"></div><div class="seg-f" style="height:${(d.s.F * 9 / totalCal) * 100}%;"></div><div class="seg-c" style="height:${(d.s.C * 4 / totalCal) * 100}%;"></div>`;
         if (d.s.A > 0) {
-            segHtml += `<div class="seg-a" style="height:${(aCal / totalCal) * 100}%; background:var(--my);"></div>`;
+            let alcColor = TG.alcMode ? "var(--my)" : "#bdc3c7";
+            segHtml += `<div class="seg-a" style="height:${(aCal / totalCal) * 100}%; background:${alcColor};"></div>`;
         }
         col.innerHTML = segHtml;
 
         grp.innerHTML = `<span class="bar-lbl">${d.label}</span>`; grp.appendChild(col);
 
         // タップした時のツールチップにも、アルコールの量を紫文字で追加するたま！
-        let aStr = (d.s.A > 0) ? ` <span style="color:var(--my)">A:${d.s.A.toFixed(1)}</span>` : "";
+        let aStr = (TG.alcMode && d.s.A > 0) ? ` <span style="color:var(--my)">A:${d.s.A.toFixed(1)}</span>` : "";
         grp.onclick = () => { document.getElementById('stat-txt').innerHTML = `${d.d}<br>総摂取:${d.s.Cal}kcal<br><span style="color:#e74c3c">P:${d.s.P.toFixed(1)}</span> <span style="color:#f1c40f">F:${d.s.F.toFixed(1)}</span> <span style="color:#3498db">C:${d.s.C.toFixed(1)}</span>${aStr}`; };
         box.appendChild(grp);
     });
