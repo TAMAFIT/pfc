@@ -13,6 +13,7 @@ window.onload = () => {
         TG = JSON.parse(localStorage.getItem('tf_tg'));
         if (TG.alcMode === undefined) TG.alcMode = false;
         if (TG.autoReset === undefined) TG.autoReset = true;
+        if (TG.cheatLastUsedDate === undefined) TG.cheatLastUsedDate = null;
     }
     if (localStorage.getItem('tf_fav')) fav = JSON.parse(localStorage.getItem('tf_fav'));
     if (localStorage.getItem('tf_my')) myFoods = JSON.parse(localStorage.getItem('tf_my'));
@@ -48,8 +49,74 @@ window.onload = () => {
 
     toggleAlcMode(true);
     if (typeof setupChatEnterKey === 'function') setupChatEnterKey();
-    mkCat(); mkTgt(); upd(); ren();
+    mkCat(); mkTgt(); upd(); ren(); checkCheatTicketStatus();
 };
+
+// ▼▼▼ チートデイチケット管理 ▼▼▼
+function checkCheatTicketStatus() {
+    const wrap = document.getElementById('premium-ticket-wrap');
+    const badge = document.getElementById('ticket-count-badge');
+    const subText = document.getElementById('ticket-cooldown-text');
+    if (!wrap || !badge || !subText) return;
+
+    if (TG.cheatTickets === undefined) {
+        TG.cheatTickets = 1;
+        if (TG.cheatLastUsedDate) {
+            const lastUsed = new Date(TG.cheatLastUsedDate);
+            const today = new Date();
+            const diffDays = Math.ceil(Math.abs(today - lastUsed) / (1000 * 60 * 60 * 24));
+            if (diffDays < 7) TG.cheatTickets = 0;
+        }
+    }
+
+    if (TG.cheatLastUsedDate) {
+        const lastUsed = new Date(TG.cheatLastUsedDate);
+        const today = new Date();
+        const diffDays = Math.ceil(Math.abs(today - lastUsed) / (1000 * 60 * 60 * 24));
+        if (diffDays >= 7 && TG.cheatTickets === 0) {
+            TG.cheatTickets = 1;
+            TG.cheatLastUsedDate = null;
+        }
+    }
+
+    if (TG.cheatTickets <= 0) {
+        wrap.classList.add('disabled');
+        wrap.onclick = null;
+        badge.textContent = `x 0`;
+        if (TG.cheatLastUsedDate) {
+            const today = new Date();
+            const diffDays = Math.ceil(Math.abs(today - new Date(TG.cheatLastUsedDate)) / (1000 * 60 * 60 * 24));
+            subText.textContent = `あと${Math.max(0, 7 - diffDays)}日で復活します`;
+        } else {
+            subText.textContent = `チケットがありません`;
+        }
+    } else {
+        wrap.classList.remove('disabled');
+        wrap.onclick = () => { if (typeof openPreCheatModal === 'function') openPreCheatModal(); };
+        badge.textContent = `x ${TG.cheatTickets}`;
+        subText.textContent = "週に1回、ご褒美の日を。";
+    }
+
+    const mgrTick = document.getElementById('mgr-ticket-count');
+    if (mgrTick) mgrTick.textContent = TG.cheatTickets;
+}
+
+function consumeCheatTicket() {
+    if (TG.cheatTickets === undefined) TG.cheatTickets = 1;
+    if (TG.cheatTickets > 0) TG.cheatTickets--;
+    TG.cheatLastUsedDate = new Date().toISOString();
+    localStorage.setItem('tf_tg', JSON.stringify(TG));
+    checkCheatTicketStatus();
+}
+
+function restoreCheatTicket() {
+    if (TG.cheatTickets === undefined) TG.cheatTickets = 0;
+    TG.cheatTickets++;
+    TG.cheatLastUsedDate = null;
+    localStorage.setItem('tf_tg', JSON.stringify(TG));
+    checkCheatTicketStatus();
+}
+// ▲▲▲ チートデイチケット管理 ▲▲▲
 
 function toggleAlcMode(isInit = false) {
     if (!isInit) { TG.alcMode = document.getElementById('alc-mode-chk').checked; localStorage.setItem('tf_tg', JSON.stringify(TG)); }
@@ -59,7 +126,7 @@ function toggleAlcMode(isInit = false) {
     upd(); ren();
     if (!isInit) {
         if (typeof rHist === 'function' && document.getElementById('hist-area').style.display === 'block') rHist();
-        if (typeof drawGraph === 'function' && document.getElementById('graph-area').style.display === 'block') { const actBtn = document.querySelector('.g-btn.act'); if(actBtn) drawGraph(actBtn.innerText.includes('月') ? 'month' : 'week', actBtn); }
+        if (typeof drawGraph === 'function' && document.getElementById('graph-area').style.display === 'block') { const actBtn = document.querySelector('.g-btn.act'); if (actBtn) drawGraph(actBtn.innerText.includes('月') ? 'month' : 'week', actBtn); }
     }
 }
 
@@ -152,6 +219,13 @@ function calcM() {
 
 function addM() {
     const n = document.getElementById('m-name').value || "未入力"; const time = document.getElementById('m-time').value || "朝"; const m = parseNum(document.getElementById('m-mul').value) || 1;
+    if (typeof isCheatDay !== 'undefined' && isCheatDay && typeof recordOnCheatDay !== 'undefined' && !recordOnCheatDay) {
+        if (typeof showToast === 'function') showToast("🎉 チートデイなのでゲージへの記録をスキップしたたま！");
+        document.getElementById('m-name').value = ''; document.getElementById('m-cal').value = '';
+        document.getElementById('amt-area').style.display = 'none'; clsBd();
+        window.scrollTo(0, 0);
+        return;
+    }
     const p = parseNum(document.getElementById('m-p').value) * m; const f = parseNum(document.getElementById('m-f').value) * m; const c = parseNum(document.getElementById('m-c').value) * m; const a = parseNum(document.getElementById('m-a').value) * m;
     const cal = parseNum(document.getElementById('m-cal').value) || (p * 4 + f * 9 + c * 4 + a * 7);
     const unit = (editIdx >= 0) ? lst[editIdx].U : (selIdx >= 0 ? DB[selIdx][3] : "-");
@@ -265,12 +339,37 @@ function upd() {
         if (tx) { tx.className = 'rem ' + (r < 0 ? 'ov' : ''); tx.textContent = r < 0 ? `+${Math.abs(r).toFixed(0)}${u}` : `残${r.toFixed(0)}${u}`; }
         if (tbox) tbox.textContent = `${v.toFixed(0)} / ${Math.round(tg)}${u}`;
     };
-    setBar('Cal', t.Cal, TG.cal, 'kcal'); setBar('P', t.P, TG.p, 'g'); setBar('F', t.F, TG.f, 'g'); setBar('C', t.C, TG.c, 'g');
+
+    // ハイカーボモード反映
+    const currentIsHighCarb = (typeof isHighCarbMode !== 'undefined') ? isHighCarbMode : false;
+    let dispCal = TG.cal;
+    let dispP = TG.p;
+    let dispF = TG.f;
+    let dispC = TG.c;
+
+    if (currentIsHighCarb) {
+        dispCal = TG.cal * 2;
+        // P、Fは維持し、余ったカロリーをすべてCに
+        dispP = TG.p;
+        dispF = TG.f;
+        dispC = (dispCal - (dispP * 4 + dispF * 9)) / 4;
+    }
+
+    setBar('Cal', t.Cal, dispCal, 'kcal'); setBar('P', t.P, dispP, 'g'); setBar('F', t.F, dispF, 'g'); setBar('C', t.C, dispC, 'g');
 
     if (TG.alcMode) { let elA = document.getElementById('bar-a'); let tboxA = document.getElementById('bar-text-a'); if (elA) elA.style.width = Math.min((t.A / 50) * 100, 100) + '%'; if (tboxA) tboxA.textContent = `${t.A.toFixed(1)}g`; }
     const modeNames = { std: "標準(3:2:5)", lowfat: "ローファット(3:1:6)", muscle: "筋肥大(4:2:4)", keto: "ケト(3:6:1)" }; const modeName = modeNames[TG.mode] || "カスタム";
-    if (document.getElementById('tgt-disp')) document.getElementById('tgt-disp').textContent = `${TG.cal}kcal [${modeName.split('(')[0]}] ▼`;
-    if (document.getElementById('pfc-ratio-disp')) document.getElementById('pfc-ratio-disp').textContent = modeName;
+
+    if (document.getElementById('tgt-disp')) {
+        if (currentIsHighCarb) {
+            document.getElementById('tgt-disp').textContent = `${dispCal}kcal [ハイカーボ特化] ▼`;
+        } else {
+            document.getElementById('tgt-disp').textContent = `${dispCal}kcal [${modeName.split('(')[0]}] ▼`;
+        }
+    }
+    if (document.getElementById('pfc-ratio-disp')) {
+        document.getElementById('pfc-ratio-disp').textContent = currentIsHighCarb ? `(ハイカーボ燃焼モード)` : modeName;
+    }
 }
 function applyCust() {
     let inputCal = parseNum(document.getElementById('cust-cal').value); const c = inputCal > 0 ? inputCal : TG.cal; const selectedMode = document.getElementById('pfc-mode').value;
@@ -323,18 +422,45 @@ function drawGraph(type, btn) {
         data = hist.slice(0, 30).reverse().map(h => ({ label: h.d.split('/')[2], s: h.s, d: h.d }));
     }
 
-    if (data.length === 0) { box.innerHTML = '<p style="margin:auto;color:#ccc">データなし</p>'; return; }
+    if (data.length === 0) {
+        box.innerHTML = `
+        <div class="empty-state">
+            <div class="icon">🔍</div>
+            <p>まだデータがないたま！</p>
+        </div>`;
+        document.getElementById('stat-txt').innerHTML = '';
+        return;
+    }
 
     const total = data.reduce((acc, cur) => acc + cur.s.Cal, 0); const avg = data.length > 0 ? Math.round(total / data.length) : 0;
-    document.getElementById('stat-txt').innerHTML = `期間平均: ${avg}kcal <span style="font-size:10px;color:#999">(合計: ${total}kcal)</span><br><span style="font-size:10px;">グラフの棒をタップで詳細</span>`;
+
+    // アニメーション付きで平均値をカウントアップさせる
+    const statTxtEl = document.getElementById('stat-txt');
+    statTxtEl.innerHTML = `期間平均: <span id="avg-cal-counter">0</span>kcal <span style="font-size:10px;color:#999">(合計: ${total}kcal)</span><br><span style="font-size:10px;">グラフの棒をタップで詳細</span>`;
+
+    // カウントアップアニメーション関数
+    let currentAvg = 0;
+    const increment = Math.ceil(avg / 30); // 30フレームで到達
+    const counterInterval = setInterval(() => {
+        currentAvg += increment;
+        if (currentAvg >= avg) {
+            currentAvg = avg;
+            clearInterval(counterInterval);
+        }
+        const counterEl = document.getElementById('avg-cal-counter');
+        if (counterEl) counterEl.textContent = currentAvg;
+    }, 20);
 
     const maxVal = Math.max(...data.map(d => d.s.Cal), TG.cal) || 2000;
     const line = document.createElement('div'); line.className = 'target-line'; line.style.bottom = (TG.cal / maxVal) * 100 + '%'; line.innerHTML = `<span class="target-val">${TG.cal}</span>`; box.appendChild(line);
 
-    data.forEach(d => {
+    data.forEach((d, idx) => {
         const h = Math.min((d.s.Cal / maxVal) * 100, 100);
         const grp = document.createElement('div'); grp.className = 'bar-grp';
-        const col = document.createElement('div'); col.className = 'bar-col'; col.style.height = h + '%';
+        const col = document.createElement('div'); col.className = 'bar-col';
+        col.style.height = h + '%';
+        // 順番に生えるようなディレイを設定
+        col.style.animationDelay = `${idx * 0.05}s`;
 
         // P,F,Cに加えて、A（1g=7kcal）も全体カロリーの比率として計算するたま！
         const aCal = (d.s.A || 0) * 7;
@@ -347,11 +473,24 @@ function drawGraph(type, btn) {
         }
         col.innerHTML = segHtml;
 
-        grp.innerHTML = `<span class="bar-lbl">${d.label}</span>`; grp.appendChild(col);
+        let aStr = (TG.alcMode && d.s.A > 0) ? `<span class="tooltip-val a">A:${d.s.A.toFixed(0)}</span>` : "";
 
-        // タップした時のツールチップにも、アルコールの量を紫文字で追加するたま！
-        let aStr = (TG.alcMode && d.s.A > 0) ? ` <span style="color:var(--my)">A:${d.s.A.toFixed(1)}</span>` : "";
-        grp.onclick = () => { document.getElementById('stat-txt').innerHTML = `${d.d}<br>総摂取:${d.s.Cal}kcal<br><span style="color:#e74c3c">P:${d.s.P.toFixed(1)}</span> <span style="color:#f1c40f">F:${d.s.F.toFixed(1)}</span> <span style="color:#3498db">C:${d.s.C.toFixed(1)}</span>${aStr}`; };
+        // ツールチップ要素を生成
+        const tooltip = document.createElement('div');
+        tooltip.className = 'chart-tooltip';
+        tooltip.innerHTML = `${d.s.Cal}kcal<br><span class="tooltip-val p">P:${d.s.P.toFixed(0)}</span><span class="tooltip-val f">F:${d.s.F.toFixed(0)}</span><span class="tooltip-val c">C:${d.s.C.toFixed(0)}</span>${aStr}`;
+
+        grp.innerHTML = `<span class="bar-lbl">${d.label}</span>`;
+        grp.appendChild(col);
+        grp.appendChild(tooltip);
+
+        // タップ時に他のツールチップを消して自分を表示
+        grp.onclick = () => {
+            document.querySelectorAll('.bar-grp').forEach(g => g.classList.remove('sc-act'));
+            grp.classList.add('sc-act');
+            // 3秒後に自動で消える
+            setTimeout(() => grp.classList.remove('sc-act'), 3000);
+        };
         box.appendChild(grp);
     });
 }
@@ -367,22 +506,192 @@ function deleteBody(i) { if (!confirm("この記録を削除しますか？")) r
 function renderBodyList() { const d = document.getElementById('body-hist-list'); if (!d) return; d.innerHTML = bodyData.slice().reverse().map((x, i) => { const originalIdx = bodyData.length - 1 - i; return `<div class="b-hist-row" onclick="editBody(${originalIdx})"><span>${x.date}</span><span>${x.w ? x.w + 'kg' : '-'} / ${x.f ? x.f + '%' : '-'} / ${x.waist ? x.waist + 'cm' : '-'}</span><button class="b-del-btn" onclick="event.stopPropagation(); deleteBody(${originalIdx})">削除</button></div>`; }).join(''); }
 function drawBodyGraph(mode, btn) {
     document.querySelectorAll('.b-tog-btn').forEach(b => b.classList.remove('act')); if (btn) btn.classList.add('act'); const box = document.getElementById('body-chart-area'); if (!box) return; box.innerHTML = ''; const legend = document.getElementById('body-legend'); legend.innerHTML = '';
-    if (bodyData.length === 0) { box.innerHTML = '<p style="padding:20px;text-align:center;color:#ccc">データがありません</p>'; return; }
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"); svg.setAttribute("viewBox", "0 0 300 150"); const datasets = [];
-    if (mode === 'A') { datasets.push({ key: 'w', color: '#3498db', label: '体重', unit: 'kg' }); datasets.push({ key: 'f', color: '#e67e22', label: '体脂肪率', unit: '%' }); datasets.push({ key: 'waist', color: '#2ecc71', label: 'ウエスト', unit: 'cm' }); } else { datasets.push({ key: 'lbm', color: '#e74c3c', label: '除脂肪', unit: 'kg' }); datasets.push({ key: 'fm', color: '#f1c40f', label: '脂肪量', unit: 'kg' }); }
+    if (bodyData.length === 0) {
+        box.innerHTML = `
+        <div class="empty-state">
+            <div class="icon">📉</div>
+            <p>まだ体組成データがないたま！</p>
+        </div>`;
+        return;
+    }
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"); svg.setAttribute("viewBox", "0 0 300 150");
+
+    // 超プレミアムなグラデーションの定義を追加
+    const defsHTML = `<defs>
+        <linearGradient id="grad-w" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#00C6FF" stop-opacity="0.6"/><stop offset="100%" stop-color="#00C6FF" stop-opacity="0"/></linearGradient>
+        <linearGradient id="grad-f" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FF9500" stop-opacity="0.6"/><stop offset="100%" stop-color="#FF9500" stop-opacity="0"/></linearGradient>
+        <linearGradient id="grad-waist" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#00F260" stop-opacity="0.6"/><stop offset="100%" stop-color="#00F260" stop-opacity="0"/></linearGradient>
+        <linearGradient id="grad-lbm" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FF3154" stop-opacity="0.6"/><stop offset="100%" stop-color="#FF3154" stop-opacity="0"/></linearGradient>
+        <linearGradient id="grad-fm" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FFD300" stop-opacity="0.6"/><stop offset="100%" stop-color="#FFD300" stop-opacity="0"/></linearGradient>
+    </defs>`;
+    svg.insertAdjacentHTML('afterbegin', defsHTML);
+
+    const datasets = [];
+    if (mode === 'A') { datasets.push({ key: 'w', color: '#00C6FF', label: '体重', unit: 'kg' }); datasets.push({ key: 'f', color: '#FF9500', label: '体脂肪率', unit: '%' }); datasets.push({ key: 'waist', color: '#00F260', label: 'ウエスト', unit: 'cm' }); } else { datasets.push({ key: 'lbm', color: '#FF3154', label: '除脂肪', unit: 'kg' }); datasets.push({ key: 'fm', color: '#FFD300', label: '脂肪量', unit: 'kg' }); }
     const dataPoints = bodyData.slice(-14); const xStep = 260 / (dataPoints.length - 1 || 1);
+
+    // X軸の目盛り線を引く
+    for (let i = 0; i < 3; i++) {
+        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        line.setAttribute("x1", 20); line.setAttribute("y1", 20 + (i * 55));
+        line.setAttribute("x2", 280); line.setAttribute("y2", 20 + (i * 55));
+        line.setAttribute("stroke", "#eee"); line.setAttribute("stroke-width", "1");
+        svg.appendChild(line);
+    }
+
     datasets.forEach((ds) => {
-        let pts = ""; const vals = dataPoints.map(d => { if (ds.key === 'w') return d.w; if (ds.key === 'f') return d.f; if (ds.key === 'waist') return d.waist; if (ds.key === 'fm') return (d.w && d.f) ? (d.w * d.f / 100) : 0; if (ds.key === 'lbm') return (d.w && d.f) ? (d.w - (d.w * d.f / 100)) : 0; return 0; });
+        let pts = "";
+        let areaPts = ""; // 面チャート用の座標
+        const vals = dataPoints.map(d => { if (ds.key === 'w') return d.w; if (ds.key === 'f') return d.f; if (ds.key === 'waist') return d.waist; if (ds.key === 'fm') return (d.w && d.f) ? (d.w * d.f / 100) : 0; if (ds.key === 'lbm') return (d.w && d.f) ? (d.w - (d.w * d.f / 100)) : 0; return 0; });
         const max = Math.max(...vals) || 100; const min = Math.min(...vals.filter(v => v > 0)) || 0; const range = max - min || 1; const current = vals[vals.length - 1] || 0;
         if (Math.max(...vals) > 0) { legend.innerHTML += `<div class="bl-item"><div class="bl-dot" style="background:${ds.color}"></div><span>${ds.label}: ${current.toFixed(1)}${ds.unit} <span style="color:#999;font-size:9px;">(${min.toFixed(0)}~${max.toFixed(0)})</span></span></div>`; }
+
+        let firstX = -1, lastX = -1;
+
         vals.forEach((v, i) => {
-            if (v > 0) { const x = 20 + i * xStep; const y = 130 - ((v - min) / range * 110); pts += `${x},${y} `; const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle"); dot.setAttribute("cx", x); dot.setAttribute("cy", y); dot.setAttribute("r", "4"); dot.setAttribute("fill", ds.color); dot.setAttribute("class", "g-dot"); dot.onclick = () => { const pop = document.getElementById('body-pop'); pop.style.display = 'block'; pop.style.left = (x / 300 * 100) + '%'; pop.style.top = '10px'; pop.innerHTML = `${dataPoints[i].date}<br>${ds.label}: ${v.toFixed(1)}`; setTimeout(() => pop.style.display = 'none', 2000); }; svg.appendChild(dot); }
+            if (v > 0) {
+                const x = 20 + i * xStep; const y = 130 - ((v - min) / range * 110);
+                pts += `${x},${y} `;
+                areaPts += `${x},${y} `;
+                if (firstX === -1) firstX = x;
+                lastX = x;
+
+                const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                dot.setAttribute("cx", x); dot.setAttribute("cy", y); dot.setAttribute("r", "4");
+                dot.setAttribute("fill", ds.color); dot.setAttribute("class", "g-dot");
+                dot.onclick = () => {
+                    const pop = document.getElementById('body-pop'); pop.style.display = 'block';
+                    pop.style.left = (x / 300 * 100) + '%'; pop.style.top = '10px';
+                    pop.innerHTML = `${dataPoints[i].date}<br>${ds.label}: ${v.toFixed(1)}`;
+                    setTimeout(() => pop.style.display = 'none', 2000);
+                };
+                svg.appendChild(dot);
+            }
         });
-        const poly = document.createElementNS("http://www.w3.org/2000/svg", "polyline"); poly.setAttribute("points", pts); poly.setAttribute("stroke", ds.color); poly.setAttribute("class", "g-line"); svg.prepend(poly);
+
+        if (pts !== "") {
+            // エリア（面）を描画
+            const areaPoly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+            areaPoly.setAttribute("points", `${firstX},150 ` + areaPts + `${lastX},150`);
+            areaPoly.setAttribute("fill", `url(#grad-${ds.key})`);
+            areaPoly.setAttribute("class", "g-area");
+            svg.insertBefore(areaPoly, svg.firstChild.nextSibling);
+
+            // 線を描画
+            const poly = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+            poly.setAttribute("points", pts); poly.setAttribute("stroke", ds.color); poly.setAttribute("class", "g-line");
+            svg.appendChild(poly);
+        }
     });
     if (dataPoints.length > 0) {
         const startTxt = document.createElementNS("http://www.w3.org/2000/svg", "text"); startTxt.setAttribute("x", 20); startTxt.setAttribute("y", 148); startTxt.setAttribute("class", "g-label"); startTxt.textContent = dataPoints[0].date.slice(5); svg.appendChild(startTxt);
         const endTxt = document.createElementNS("http://www.w3.org/2000/svg", "text"); endTxt.setAttribute("x", 280); endTxt.setAttribute("y", 148); endTxt.setAttribute("class", "g-label"); endTxt.setAttribute("text-anchor", "end"); endTxt.textContent = dataPoints[dataPoints.length - 1].date.slice(5); svg.appendChild(endTxt);
     }
     box.appendChild(svg);
+}
+
+// ▼▼▼ マネージャーモード (デバッグ用) ▼▼▼
+function tryOpenManagerMode() {
+    const pwd = prompt("製作者専用パスワードを入力 (0922)");
+    if (pwd === "0922") {
+        document.getElementById('manager-modal').style.display = 'flex';
+        const mgrTick = document.getElementById('mgr-ticket-count');
+        if (mgrTick) mgrTick.textContent = TG.cheatTickets !== undefined ? TG.cheatTickets : (TG.cheatLastUsedDate ? 0 : 1);
+        mgrUpdateSlidersFromCurrent();
+    } else if (pwd !== null) {
+        alert("パスワードが違います");
+    }
+}
+
+function mgrAddTicket(diff) {
+    if (TG.cheatTickets === undefined) TG.cheatTickets = (TG.cheatLastUsedDate ? 0 : 1);
+    TG.cheatTickets += diff;
+    if (TG.cheatTickets < 0) TG.cheatTickets = 0;
+    if (TG.cheatTickets > 0) TG.cheatLastUsedDate = null; // Clear cooldown if any
+    localStorage.setItem('tf_tg', JSON.stringify(TG));
+    checkCheatTicketStatus();
+}
+
+function mgrUpdateSlidersFromCurrent() {
+    const t = { P: 0, F: 0, C: 0 };
+    // 除外 debug food to see base? No, just calculate overall including debug
+    lst.forEach(x => { t.P += x.P; t.F += x.F; t.C += x.C; });
+    const pPct = Math.round((t.P / TG.p) * 100) || 0;
+    const fPct = Math.round((t.F / TG.f) * 100) || 0;
+    const cPct = Math.round((t.C / TG.c) * 100) || 0;
+
+    document.getElementById('mgr-slide-p').value = Math.min(150, Math.max(0, pPct));
+    document.getElementById('mgr-slide-f').value = Math.min(150, Math.max(0, fPct));
+    document.getElementById('mgr-slide-c').value = Math.min(150, Math.max(0, cPct));
+
+    document.getElementById('mgr-val-p').textContent = Math.min(150, Math.max(0, pPct));
+    document.getElementById('mgr-val-f').textContent = Math.min(150, Math.max(0, fPct));
+    document.getElementById('mgr-val-c').textContent = Math.min(150, Math.max(0, cPct));
+}
+
+function mgrApplyPFC() {
+    const pPct = document.getElementById('mgr-slide-p').value;
+    const fPct = document.getElementById('mgr-slide-f').value;
+    const cPct = document.getElementById('mgr-slide-c').value;
+
+    document.getElementById('mgr-val-p').textContent = pPct;
+    document.getElementById('mgr-val-f').textContent = fPct;
+    document.getElementById('mgr-val-c').textContent = cPct;
+
+    // Remove old debug food
+    lst = lst.filter(x => x.id !== 'mgr_debug_food');
+
+    // Calculate current without debug food
+    const t = { P: 0, F: 0, C: 0 };
+    lst.forEach(x => { t.P += x.P; t.F += x.F; t.C += x.C; });
+
+    const targetP = (parseFloat(pPct) / 100) * TG.p;
+    const targetF = (parseFloat(fPct) / 100) * TG.f;
+    const targetC = (parseFloat(cPct) / 100) * TG.c;
+
+    const diffP = targetP - t.P;
+    const diffF = targetF - t.F;
+    const diffC = targetC - t.C;
+
+    if (Math.abs(diffP) > 1 || Math.abs(diffF) > 1 || Math.abs(diffC) > 1) {
+        let cal = Math.round(diffP * 4 + diffF * 9 + diffC * 4);
+        lst.push({
+            id: 'mgr_debug_food',
+            N: "🛠️ [デバッグ用] PFC調整ダミー",
+            P: diffP, F: diffF, C: diffC, A: 0, Cal: cal, U: "調整", time: "晩"
+        });
+    }
+    sv(); ren(); upd();
+}
+
+function mgrGenerateDummy() {
+    if (!confirm("過去7日分のダミーデータを履歴に生成しますか？\n（現在の履歴は上書きされる可能性があります）")) return;
+    const today = new Date();
+    for (let i = 1; i <= 7; i++) {
+        let d = new Date(today);
+        d.setDate(today.getDate() - i);
+        let dateStr = d.toLocaleDateString();
+
+        let dummyLst = [
+            { id: Date.now() + i * 10 + 1, N: "ダミー朝食", P: 20, F: 10, C: 40, A: 0, Cal: 330, U: "食", time: "朝" },
+            { id: Date.now() + i * 10 + 2, N: "ダミー昼食", P: 30, F: 15, C: 60, A: 0, Cal: 495, U: "食", time: "昼" },
+            { id: Date.now() + i * 10 + 3, N: "ダミー夕食", P: 40, F: 20, C: 50, A: 0, Cal: 540, U: "食", time: "晩" }
+        ];
+
+        if (i % 2 === 0 && TG.alcMode) {
+            dummyLst.push({ id: Date.now() + i * 10 + 4, N: "ダミー酒", P: 0, F: 0, C: 5, A: 20, Cal: 160, U: "杯", time: "晩" });
+        }
+        svHist(dateStr, dummyLst);
+    }
+    if (typeof showToast === 'function') showToast("ダミーデータを生成しました！");
+    rHist();
+    const activeGBtn = document.querySelector('.g-btn.act');
+    if (activeGBtn) drawGraph('week', activeGBtn);
+}
+
+function mgrHardReset() {
+    if (!confirm("【警告】\nlocalStorageのデータをすべて初期化します。\n体組成やMy食品、履歴など完全に消えます。\n本当によろしいですか？")) return;
+    localStorage.clear();
+    alert("全データを初期化しました。再読み込みします。");
+    location.reload();
 }

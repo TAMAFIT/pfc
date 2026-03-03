@@ -1,721 +1,3034 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-<script>
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    const manifestLink = document.createElement('link');
-    manifestLink.rel = 'manifest';
-    manifestLink.href = isIOS ? 'manifest-ios.json' : 'manifest.json';
-    document.head.appendChild(manifestLink);
-    if (!isIOS) {
-        const meta = document.createElement('meta');
-        meta.name = 'apple-mobile-web-app-capable';
-        meta.content = 'yes';
-        document.head.appendChild(meta);
-    }
-</script>
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="たまPFC">
-<link rel="apple-touch-icon" href="icon.png">
-<title>たまフィットPFC</title>
-<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
-<style>
-/* ▼▼▼ 基本デザイン設定 ▼▼▼ */
-:root {
-    --th: #f55a94;       /* ピンク */
-    --bg: #fdf2f4;       /* 薄いピンク背景 */
-    --tx: #333;          /* 文字色 */
-    --ac: #fff0f6;       /* アクセント */
-    --ma: #e6b422;       /* カロリー色 */
-    --mn: #ff9f43;       /* オレンジ */
-    --sb: #f0f2f5;       /* 検索枠 */
-    --del: #e74c3c;      /* 赤 */
-    --ed: #3498db;       /* 青 */
-    --add: #2ecc71;      /* 緑 */
-    --gd: #f39c12;       /* 金 */
-    --my: #9b59b6;       /* 紫 */
-    --body: #2ecc71;     /* 体組成 */
-}
+    <script>
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        const manifestLink = document.createElement('link');
+        manifestLink.rel = 'manifest';
+        manifestLink.href = isIOS ? 'manifest-ios.json' : 'manifest.json';
+        document.head.appendChild(manifestLink);
+        if (!isIOS) {
+            const meta = document.createElement('meta');
+            meta.name = 'apple-mobile-web-app-capable';
+            meta.content = 'yes';
+            document.head.appendChild(meta);
+        }
+    </script>
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="たまPFC">
+    <link rel="apple-touch-icon" href="icon.png">
+    <title>たまフィットPFC</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* ▼▼▼ 基本デザイン設定 ▼▼▼ */
+        :root {
+            --th: #f55a94;
+            /* ピンク */
+            --bg: #fdf2f4;
+            /* 薄いピンク背景 */
+            --tx: #333;
+            /* 文字色 */
+            --ac: #fff0f6;
+            /* アクセント */
+            --ma: #e6b422;
+            /* カロリー色 */
+            --mn: #ff9f43;
+            /* オレンジ */
+            --sb: #f0f2f5;
+            /* 検索枠 */
+            --del: #e74c3c;
+            /* 赤 */
+            --ed: #3498db;
+            /* 青 */
+            --add: #2ecc71;
+            /* 緑 */
+            --gd: #f39c12;
+            /* 金 */
+            --my: #9b59b6;
+            /* 紫 */
+            --body: #2ecc71;
+            /* 体組成 */
+        }
 
-body {
-    font-family: 'M PLUS Rounded 1c', sans-serif;
-    background: var(--bg);
-    color: var(--tx);
-    margin: 0;
-    padding: 0 0 100px; /* タブバーの分、下部余白 */
-    line-height: 1.6;
-    -webkit-tap-highlight-color: transparent;
-}
+        body {
+            font-family: 'Inter', 'Noto Sans JP', 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg);
+            color: var(--tx);
+            margin: 0;
+            padding: 0 0 100px;
+            /* タブバーの分、下部余白 */
+            line-height: 1.6;
+            -webkit-tap-highlight-color: transparent;
+        }
 
-.header {
-    background: var(--th);
-    padding: 10px 15px;
-    text-align: center;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    padding-top: env(safe-area-inset-top);
-}
-.header h1 { color: #fff; font-size: 20px; margin: 0; font-weight: 900; display: flex; align-items: center; justify-content: center; }
-.container { max-width: 600px; margin: 0 auto; padding: 15px; }
+        .header {
+            background: var(--th);
+            padding: 10px 15px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            padding-top: env(safe-area-inset-top);
+            position: relative;
+        }
 
-/* お知らせ＆目標設定＆メーター */
-.top-alert-box { background: #fff3cd; border: 2px solid #ffc107; padding: 10px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); cursor: pointer; }
-.ta-title { font-weight: 900; color: #d35400; font-size: 13px; display: block; text-align: center; margin-bottom: 5px; }
-.ta-list { font-size: 12px; color: #333; line-height: 1.5; margin-bottom: 8px; font-weight: bold; }
-.ta-warn { font-size: 11px; color: #c0392b; font-weight: bold; margin-bottom: 8px; text-align: center; }
-.btn-import-huge { display: block; width: 100%; background: linear-gradient(135deg, #e74c3c, #c0392b); color: #fff; border: none; padding: 10px; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; text-align: center; box-shadow: 0 2px 5px rgba(231,76,60,0.3); }
+        .header h1 {
+            color: #fff;
+            font-size: 20px;
+            margin: 0;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
 
-.tgt-sec { background: #fff; padding: 10px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #eee; }
-.tgt-tog { font-weight: bold; color: var(--th); cursor: pointer; text-align: center; }
-.tgt-btns { display: none; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-top: 10px; }
-.tg-btn { padding: 8px 2px; border: 1px solid #ddd; border-radius: 6px; font-size: 10px; text-align: center; cursor: pointer; display: flex; flex-direction: column; background: #fff; }
-.tg-btn.act { background: var(--th); color: #fff; border-color: var(--th); }
-#cust-tgt { display: none; padding: 10px; background: #f9f9f9; margin-top: 10px; border-radius: 8px; text-align: center; flex-direction: column; gap: 5px; }
-.cust-row { display: flex; gap: 10px; align-items: center; justify-content: center; margin-top: 5px; }
-#cust-cal { width: 80px; padding: 5px; border-radius: 4px; border: 1px solid #ccc; text-align: center; }
-.cust-btn { background: var(--th); color: #fff; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
-.alc-toggle { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #ccc; font-weight: bold; font-size: 12px; color: var(--my); display: flex; justify-content: center; align-items: center; gap: 5px; }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 15px;
+        }
 
-.dash { background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 20px; border: 2px solid var(--th); }
-.dash-t { text-align: center; font-weight: bold; margin-bottom: 10px; color: var(--th); }
-.mtr { margin-bottom: 10px; }
-.mtr-l { display: flex; justify-content: space-between; align-items: flex-end; font-size: 13px; font-weight: bold; margin-bottom: 2px; }
-.mtr-l .lbl { display: flex; align-items: baseline; gap: 5px; }
-.mtr-l .lbl span { font-size: 15px; }
-.mtr-l .lbl small { font-size: 10px; color: #666; font-weight: normal; }
-.rem { color: var(--th); font-weight: 900; font-size: 14px; }
-.mtr:first-child .rem { font-size: 18px; }
-.rem.ov { color: #e74c3c; }
-.bar-bg { position: relative; height: 14px; background: #eee; border-radius: 7px; overflow: hidden; display: flex; align-items: center; }
-.bar { position: absolute; left: 0; height: 100%; background: var(--th); width: 0%; transition: width 0.5s; }
-.bar.ov { background: #e74c3c; }
-.bar-text { position: absolute; width: 100%; text-align: center; font-size: 10px; font-weight: 900; color: #fff; mix-blend-mode: difference; z-index: 2; pointer-events: none; }
-#mtr-a .bar { background: var(--my); }
-#mtr-a .rem { color: var(--my); }
+        /* ▼▼▼ チートデイ機能 ▼▼▼ */
+        body.cheat-mode {
+            background: linear-gradient(135deg, #2b1f0e 0%, #1a1a1a 50%, #362908 100%);
+            --th: #d4af37;
+            /* Gold */
+        }
 
-/* ▼▼▼ メインアクションパネル ▼▼▼ */
-.main-actions { background: #fff; padding: 15px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.06); margin-bottom: 20px; border: 1px solid #eee; }
+        body.cheat-mode .header {
+            background: linear-gradient(135deg, #111, #2c2510);
+            border-bottom: 1px solid #d4af37;
+        }
 
-/* 音声入力 (メインボタン) */
-.btn-voice-main { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; background: linear-gradient(135deg, #ff4757, #ff6b81); color: #fff; border: none; padding: 18px; border-radius: 12px; font-size: 18px; font-weight: bold; box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3); cursor: pointer; transition: transform 0.2s; margin-bottom: 15px; }
-.btn-voice-main:active { transform: scale(0.97); }
+        body.cheat-mode .header h1 {
+            color: #d4af37;
+            text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+        }
 
-/* サブボタン群 */
-.sub-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.btn-sub-act { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: #fff; border: none; border-radius: 12px; padding: 15px 5px; font-weight: bold; font-size: 14px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
-.btn-sub-act:active { transform: scale(0.97); box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
-.btn-manual { color: #2c3e50; border-bottom: 3px solid #3498db; }
-.btn-manual .icon { font-size: 26px; color: #3498db; }
-.btn-camera { color: #2c3e50; border-bottom: 3px solid #9b59b6; }
-.btn-camera .icon { font-size: 26px; color: #9b59b6; }
+        body.cheat-mode .dash {
+            background: #1a1a1a;
+            color: #fff;
+            border-color: #d4af37;
+            box-shadow: 0 4px 25px rgba(212, 175, 55, 0.4);
+        }
 
-/* 切り取り線 */
-.util-divider { border: none; border-top: 2px dashed #eee; margin: 20px 0 15px; }
+        body.cheat-mode .dash-t {
+            color: #d4af37;
+        }
 
-/* ユーティリティボタン (正方形 1x4) */
-.utility-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.btn-util { border: none; border-radius: 12px; aspect-ratio: 1 / 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-size: 11px; font-weight: 900; cursor: pointer; box-shadow: 0 3px 8px rgba(0,0,0,0.05); transition: transform 0.15s; }
-.btn-util:active { transform: scale(0.95); }
-.btn-util .icon { font-size: 22px; }
-.btn-copy { background: #34495e; color: #fff; } 
-.btn-req { background: #f0f2f5; color: #555; }   
-.btn-recipe { background: #f1c40f; color: #5c3a21; } 
-.btn-save { background: linear-gradient(135deg, var(--th), #ff8bb5); color: #fff; } 
+        body.cheat-mode .dash {
+            border-color: #f1c40f;
+            box-shadow: 0 4px 25px rgba(241, 196, 15, 0.3);
+        }
 
-/* 手打ち入力エリア */
-.inp-sec { background: #fff; padding: 15px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; display: none; border: 2px solid #3498db; }
-label { display: block; margin-bottom: 8px; font-weight: bold; font-size: 14px; color: var(--th); }
-.s-box { position: relative; margin-bottom: 15px; }
-.s-inp { width: 100%; padding: 12px 12px 12px 40px; border-radius: 25px; border: 2px solid #ddd; background: var(--sb); font-size: 16px; box-sizing: border-box; }
-.s-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #999; }
-.s-res { position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #ddd; border-radius: 8px; max-height: 250px; overflow-y: auto; z-index: 100; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-.s-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 16px; }
+        body.cheat-mode .rem.ov {
+            color: #f39c12;
+            animation: none;
+        }
 
-.cat-grp { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.c-btn { padding: 10px 5px; font-size: 13px; border: 1px solid var(--th); background: #fff; color: var(--th); border-radius: 6px; cursor: pointer; font-weight: bold; text-align: center; }
-.c-btn.act { background: var(--th); color: #fff; }
-.c-btn.fav-cat-btn { border-color: var(--gd); color: #d35400; background: #fff8e1; }
-.c-btn.fav-cat-btn.act { background: var(--gd); color: #fff; }
-.c-btn.my-cat-btn { border-color: var(--my); color: #8e44ad; background: #f3e5f5; }
-.c-btn.my-cat-btn.act { background: var(--my); color: #fff; }
-#f-list { display: none; margin-top: 10px; max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; background: #fff; }
-.list-head { position: sticky; top: 0; background: #eee; padding: 5px 10px; font-size: 12px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; z-index: 10; }
-.cls-btn { background: #999; color: #fff; padding: 2px 8px; border-radius: 4px; cursor: pointer; }
-.f-btn { padding: 12px; border-bottom: 1px solid #f0f0f0; cursor: pointer; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
-.fav-icon { font-size: 20px; color: #ddd; padding: 0 10px; }
-.fav-icon.act { color: var(--gd); }
-.del-icon { font-size: 12px; color: #fff; background: var(--del); padding: 2px 8px; border-radius: 10px; }
-#amt-area { display: none; margin-top: 20px; }
-.amt-btns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 15px; }
-.amt-btns.rice { grid-template-columns: repeat(3, 1fr); margin-bottom: 5px; }
-.a-btn { padding: 5px 2px; background: #f4f4f4; border: 1px solid #ddd; border-radius: 6px; font-size: 12px; cursor: pointer; text-align: center; display: flex; flex-direction: column; justify-content: center; min-height: 50px; }
-.a-btn span:first-child { font-weight: bold; font-size: 13px; }
-.a-btn .sub-label { font-size: 10px; color: #666; margin-bottom: 2px; }
-.a-btn.sel { background: var(--th); color: #fff; border-color: var(--th); }
-.a-btn.sel .sub-label { color: #fff; }
-.dir-inp { grid-column: span 1; border: 2px solid var(--mn); border-radius: 6px; overflow: hidden; display: flex; align-items: center; background: #fff; }
-.dir-inp input { width: 70%; height: 100%; border: none; text-align: center; font-weight: bold; padding: 0; font-size: 14px; }
-.unit-label { font-size: 11px; color: #666; width: 30%; text-align: center; background: #eee; height: 100%; display: flex; align-items: center; justify-content: center; }
-.pv-bar { background: linear-gradient(135deg, #fff0f6, #fff); border: 2px solid var(--th); border-radius: 8px; padding: 10px 15px; margin: 10px 0; cursor: pointer; position: relative; }
-.reg-bd { display: none; background: #fdfdfd; border: 2px solid var(--th); border-top: 1px dashed var(--th); border-radius: 0 0 8px 8px; padding: 15px; margin-bottom: 20px; position: relative; }
-.cls-bd { position: absolute; top: 10px; right: 10px; background: #eee; font-size: 11px; padding: 4px 10px; border-radius: 20px; cursor: pointer; }
-.m-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 5px; }
-.m-grid input, #m-name, #m-cal, #m-mul, #m-c { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; margin-bottom: 0; font-size: 14px; }
-.btn-add { display: block; width: 100%; padding: 15px; background: linear-gradient(135deg, var(--th), #ff8bb5); color: #fff; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 15px; }
-.btn-my { display: block; width: 100%; padding: 10px; background: var(--my); color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-.my-manual-btn { display: block; width: 100%; padding: 12px; background: var(--my); color: #fff; border: none; border-radius: 8px; font-weight: bold; margin-top: 15px; text-align: center; font-size: 14px; }
+        body.cheat-mode .bar.ov {
+            background: linear-gradient(90deg, #f1c40f, #e74c3c, #f1c40f);
+            background-size: 200% auto;
+            animation: rainbow-bg 2s linear infinite;
+        }
 
-/* タイムライン */
-.tl-sec { margin-bottom: 15px; }
-.tl-head { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #fff; border-left: 4px solid var(--th); border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.03); margin-bottom: 8px; font-weight: bold; font-size: 14px; }
-.tl-head.朝 { border-left-color: #f1c40f; } .tl-head.昼 { border-left-color: #e67e22; } .tl-head.晩 { border-left-color: #34495e; } .tl-head.間食 { border-left-color: #9b59b6; }
-.tl-stats { font-size: 11px; color: #666; font-weight: normal; text-align: right; }
-.f-list { list-style: none; padding: 0; margin: 0; }
-.f-item { background: var(--ac); padding: 12px; border-radius: 8px; margin-bottom: 8px; font-size: 14px; border-left: 2px solid transparent; }
-.f-item.alc { border-left-color: var(--my); background: #fdf5ff; } 
-.act-btns { display: flex; justify-content: flex-end; gap: 8px; border-top: 1px dashed #eec5d5; padding-top: 8px; margin-top: 8px; }
-.l-btn { border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold; color: #fff; }
-.b-re { background: var(--add); } .b-ed { background: var(--ed); } .b-del { background: var(--del); }
+        @keyframes rainbow-bg {
+            0% {
+                background-position: 0% 50%;
+            }
 
-/* 下部の展開エリア */
-.expand-area { display: none; background: #fff; padding: 18px 15px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); margin-bottom: 25px; border: 2px solid #ddd; animation: slideDown 0.3s ease; position: relative; }
-@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-.expand-close { position: absolute; top: 12px; right: 12px; background: #f0f2f5; color: #666; font-size: 10px; font-weight: bold; padding: 4px 10px; border-radius: 12px; cursor: pointer; z-index: 10; }
-#hist-area { border-color: var(--th); }
-.graph-sec { border-color: #f39c12; }
-.body-sec { border-color: var(--body); }
+            100% {
+                background-position: 200% 50%;
+            }
+        }
 
-/* グラフ・体組成 CSS省略なし */
-.g-btns { display: flex; justify-content: center; gap: 10px; margin-bottom: 10px; }
-.g-btn { padding: 5px 15px; border: 1px solid #ccc; border-radius: 20px; background: #eee; cursor: pointer; font-size: 12px; }
-.g-btn.act { background: var(--th); color: #fff; border-color: var(--th); }
-.chart-box { height: 180px; display: flex; align-items: flex-end; justify-content: space-around; padding-top: 20px; border-bottom: 1px solid #ccc; position: relative; }
-.bar-grp { width: 10%; height: 100%; position: relative; cursor: pointer; }
-.bar-col { position: absolute; bottom: 0; left: 0; width: 100%; display: flex; flex-direction: column-reverse; border-radius: 4px 4px 0 0; overflow: hidden; }
-.seg-p { background: #ff6b6b; } .seg-f { background: #feca57; } .seg-c { background: #54a0ff; }
-.target-line { position: absolute; left: 0; right: 0; border-top: 2px dashed #e74c3c; z-index: 10; pointer-events: none; }
-.target-val { position: absolute; right: 0; top: -18px; background: #e74c3c; color: #fff; font-size: 10px; padding: 2px 4px; border-radius: 4px; }
-.graph-legend { display: flex; justify-content: center; gap: 15px; font-size: 11px; margin-top: 10px; }
-.leg-item { display: flex; align-items: center; gap: 4px; }
-.leg-box { width: 10px; height: 10px; border-radius: 2px; }
-.stat-row { text-align: center; font-size: 13px; margin-top: 30px; font-weight: bold; color: #555; padding: 10px; background: #f9f9f9; border-radius: 8px; }
-.h-card { background: #fff; border: 1px solid #eee; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.03); overflow: hidden; }
-.h-summary { padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: #fff; }
-.h-btns { display: flex; gap: 5px; align-items: center; }
-.h-btn { border: none; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; color: #fff; cursor: pointer; height: 32px; display: flex; align-items: center; justify-content: center; }
-.h-b-res { background: var(--add); } .h-b-cp { background: #333; } .h-b-del { background: var(--del); }
-.h-detail { display: none; background: #fafafa; border-top: 1px dashed #eee; padding: 10px; }
-.hf-row { display: flex; justify-content: space-between; font-size: 12px; padding: 6px 0; border-bottom: 1px solid #eee; color: #444; }
-.b-toggle { display: flex; justify-content: center; gap: 10px; margin-bottom: 10px; margin-top: 15px; }
-.b-tog-btn { padding: 6px 12px; border: 1px solid var(--body); border-radius: 20px; color: var(--body); background: #fff; font-size: 12px; cursor: pointer; }
-.b-tog-btn.act { background: var(--body); color: #fff; }
-.body-legend-box { font-size: 11px; margin-bottom: 10px; background: #f9f9f9; padding: 8px; border-radius: 6px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
-.bl-item { display: flex; align-items: center; gap: 4px; }
-.bl-dot { width: 8px; height: 8px; border-radius: 50%; }
-.body-graph-box { height: 200px; position: relative; border-bottom: 1px solid #ccc; margin-bottom: 25px; padding-bottom: 5px; }
-.body-inp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; background: #f9f9f9; padding: 10px; border-radius: 8px; }
-.body-inp-item { display: flex; flex-direction: column; }
-.body-inp-item span { font-size: 10px; color: #666; margin-bottom: 2px; }
-.body-inp-item input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; text-align: center; font-size: 14px; }
-.btn-body-rec { width: 100%; background: var(--body); color: #fff; border: none; padding: 12px; border-radius: 8px; font-weight: bold; margin-top: 10px; cursor: pointer; font-size: 15px; }
-.b-hist-row { display: flex; justify-content: space-between; padding: 12px 8px; border-bottom: 1px solid #eee; font-size: 12px; cursor: pointer; }
-.b-del-btn { background: #ccc; color: #fff; border: none; padding: 4px 10px; border-radius: 4px; margin-left: 10px; cursor: pointer; }
-svg { width: 100%; height: 100%; overflow: visible; }
-.g-line { fill: none; stroke-width: 2; stroke-linecap: round; }
-.g-dot { r: 4; cursor: pointer; stroke: #fff; stroke-width: 1; }
-.g-label { font-size: 10px; font-weight: bold; }
-.g-pop { position: absolute; background: rgba(0,0,0,0.8); color: #fff; padding: 5px; border-radius: 4px; font-size: 11px; pointer-events: none; display: none; white-space: nowrap; z-index: 100; top: 0; left: 0; }
+        /* 新・プレミアムチケットUI */
+        .premium-ticket-wrap {
+            margin-bottom: 15px;
+            padding: 0;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
 
-/* ▼ モーダル */
-.modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center; }
-.modal-box { background: #fff; padding: 25px 20px; border-radius: 16px; width: 85%; max-width: 320px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
-.modal-title { font-weight: 900; margin-bottom: 5px; display: block; color: var(--th); font-size: 18px; }
-.modal-subtitle { font-size: 12px; color: #666; margin-bottom: 15px; display: block; }
-.modal-date { padding: 12px; font-size: 16px; border: 2px solid #ddd; border-radius: 8px; margin-bottom: 15px; width: 100%; box-sizing: border-box; text-align: center; font-weight: bold; color: #333; }
-.auto-save-box { margin: 15px 0 20px; padding: 15px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 10px; text-align: left; }
-.modal-btns { display: flex; gap: 10px; }
-.m-btn { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; transition: 0.2s; }
-.m-save { background: var(--th); color: #fff; } .m-save:active { transform: scale(0.95); }
-.m-cancel { background: #eee; color: #555; } .m-cancel:active { background: #e0e0e0; }
+        .premium-ticket-wrap:active {
+            transform: scale(0.98);
+        }
 
-/* ▼ タブバー */
-.bottom-tab-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-top: 1px solid #eee; display: flex; justify-content: space-around; align-items: center; padding-bottom: env(safe-area-inset-bottom); height: 65px; z-index: 9000; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
-.tab-item { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 25%; height: 100%; color: #888; cursor: pointer; text-decoration: none; transition: color 0.2s; user-select: none; -webkit-user-select: none; }
-.tab-item:active { background: #f9f9f9; }
-.tab-item .icon { font-size: 22px; margin-bottom: 2px; }
-.tab-item .label { font-size: 10px; font-weight: bold; }
-.tab-item.active { color: var(--th); }
+        .premium-ticket-wrap.disabled {
+            filter: grayscale(100%);
+            opacity: 0.7;
+            pointer-events: none;
+        }
 
-/* ▼ フローティングボタン */
-#tama-chat-btn { position: fixed; bottom: calc(75px + env(safe-area-inset-bottom)); right: 15px; z-index: 9500; display: flex; align-items: center; justify-content: center; background-color: var(--th); width: 60px; height: 60px; border-radius: 50%; box-shadow: 0 4px 15px rgba(245, 90, 148, 0.4); cursor: pointer; transition: transform 0.2s ease; user-select: none; -webkit-user-select: none; }
-#tama-chat-btn:active { transform: scale(0.92); }
-#tama-chat-btn img { width: 44px; height: 44px; object-fit: cover; border-radius: 50%; display: block; pointer-events: none; border: 2px solid #fff; background-color: #fff; flex-shrink: 0; }
+        .premium-ticket {
+            background: linear-gradient(135deg, #111 0%, #2c3e50 100%);
+            border: 2px solid #d4af37;
+            /* Gold border */
+            border-radius: 12px;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(212, 175, 55, 0.2);
+        }
 
-/* ▼ 通常チャットウィンドウ */
-#tama-chat-window { position: fixed; bottom: calc(85px + env(safe-area-inset-bottom)); right: 15px; width: 350px; height: 500px; max-height: 65vh; background-color: #fff; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); z-index: 10000; display: none; flex-direction: column; overflow: hidden; border: 1px solid #ddd; }
-.chat-header { background-color: var(--th); color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; font-weight: bold; }
-.ch-close { cursor: pointer; font-size: 1.2rem; }
-.chat-body { flex: 1; padding: 15px; overflow-y: auto; background-color: #f5f6fa; display: flex; flex-direction: column; gap: 15px; }
-.msg { display: flex; align-items: flex-end; gap: 10px; max-width: 100%; }
-.msg.user { flex-direction: row-reverse; }
-.msg .icon { flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%; border: 2px solid #fff; background: #fff; overflow: hidden; display: flex; align-items: center; justify-content: center; }
-.msg .icon img { width: 100%; height: 100%; object-fit: cover; }
-.msg.user .icon { display: none; }
-.msg .text { background: #fff; padding: 10px 14px; border-radius: 18px; border-top-left-radius: 2px; font-size: 0.95rem; line-height: 1.5; box-shadow: 0 1px 2px rgba(0,0,0,0.1); max-width: 80%; white-space: pre-wrap; word-break: break-word; }
-.msg.user .text { background: var(--th); color: white; border-top-left-radius: 18px; border-top-right-radius: 2px; }
-.chat-footer { padding: 10px; background: #fff; border-top: 1px solid #eee; display: flex; gap: 8px; align-items: center; }
-#chat-input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 20px; outline: none; font-size: 14px; }
-.chat-footer #chat-send { padding: 0 16px; height: 40px; border-radius: 20px; background: var(--th); color: white; font-weight: bold; border: none; cursor: pointer; }
+        .premium-ticket::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(to right, rgba(255, 255, 255, 0) 0%, rgba(212, 175, 55, 0.1) 50%, rgba(255, 255, 255, 0) 100%);
+            transform: rotate(45deg);
+            animation: shimmer-gold 3s infinite linear;
+            pointer-events: none;
+        }
 
-/* ▼ ボイス専用UI */
-#voice-ui-window { position: fixed; bottom: 0; left: 0; width: 100%; height: 75vh; background: #fff; border-radius: 24px 24px 0 0; box-shadow: 0 -10px 40px rgba(0,0,0,0.15); z-index: 10500; display: none; flex-direction: column; overflow: hidden; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-#voice-ui-window.active { transform: translateY(0); }
-.v-header { padding: 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; }
-.v-title { font-weight: 900; font-size: 18px; color: #333; display: flex; align-items: center; gap: 8px; }
-.v-close { width: 32px; height: 32px; background: #f0f2f5; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #666; cursor: pointer; }
-.v-mic-container { position: relative; width: 120px; height: 120px; display: flex; align-items: center; justify-content: center; z-index: 2; }
-.v-mic-btn { width: 90px; height: 90px; border-radius: 50%; background: linear-gradient(135deg, #ff4757, #ff6b81); color: #fff; font-size: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 10px 25px rgba(255, 71, 87, 0.4); transition: transform 0.2s; }
-.v-mic-btn:active { transform: scale(0.9); }
-.v-footer { padding: 15px 20px calc(15px + env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid #eee; display: flex; gap: 10px; }
-.v-footer input { flex: 1; padding: 12px 15px; border: 1px solid #ddd; border-radius: 20px; font-size: 15px; outline: none; background: #f9f9f9; }
-.v-footer button { background: var(--th); color: #fff; border: none; padding: 0 20px; border-radius: 20px; font-weight: bold; cursor: pointer; }
+        @keyframes shimmer-gold {
+            0% {
+                transform: translateX(-100%) rotate(45deg);
+            }
 
-/* ▼ 追加＆修正：トグルスイッチとマイクアニメーション */
-.toggle-switch-label { display: flex; justify-content: space-between; align-items: center; cursor: pointer; width: 100%; margin: 0; padding: 5px 0; }
-.toggle-switch { position: relative; display: inline-block; width: 50px; height: 28px; flex-shrink: 0; }
-.toggle-switch input { opacity: 0; width: 0; height: 0; }
-.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .3s; border-radius: 34px; }
-.slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 4px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-input:checked + .slider { background-color: var(--add); }
-input:checked + .slider:before { transform: translateX(22px); }
+            100% {
+                transform: translateX(100%) rotate(45deg);
+            }
+        }
 
-#voice-ui-window .v-body { flex: none; padding: 10px 0 5px; background: #fafafa; border-top: 1px solid #eee; display: flex; flex-direction: column; align-items: center; }
-#voice-ui-window .v-mic-container { height: 80px; }
-#voice-ui-window .v-status { font-size: 14px; margin-bottom: 5px; min-height: 20px; font-weight: bold; color: var(--th); }
+        .ticket-content {
+            display: flex;
+            flex-direction: column;
+            z-index: 2;
+        }
 
-/* ボイスマイク波紋 */
-.v-mic-btn.listening { animation: v-pulse 1.5s infinite; background: #ff4757; }
-@keyframes v-pulse { 0% { box-shadow: 0 0 0 0 rgba(255,71,87,0.6); } 70% { box-shadow: 0 0 0 30px rgba(255,71,87,0); } 100% { box-shadow: 0 0 0 0 rgba(255,71,87,0); } }
+        .ticket-title {
+            font-family: 'Times', serif;
+            font-size: 18px;
+            font-weight: 900;
+            color: #d4af37;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 1px 1px 2px #000;
+        }
 
-/* 通常マイク波紋 */
-#mic-btn.recording { background: #ff4757 !important; color: white !important; animation: c-pulse 1.5s infinite; }
-@keyframes c-pulse { 0% { box-shadow: 0 0 0 0 rgba(255,71,87,0.6); } 70% { box-shadow: 0 0 0 15px rgba(255,71,87,0); } 100% { box-shadow: 0 0 0 0 rgba(255,71,87,0); } }
-</style>
+        .ticket-sub {
+            font-size: 10px;
+            color: #aaa;
+            margin-top: 4px;
+        }
+
+        .ticket-badge {
+            background: #d4af37;
+            color: #111;
+            font-weight: 900;
+            font-size: 14px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            z-index: 2;
+            box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.3);
+        }
+
+        #cheat-panel {
+            display: none;
+            background: #fff;
+            padding: 15px;
+            border-radius: 12px;
+            border: 2px solid #d4af37;
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .cheat-cancel-btn {
+            background: #eee;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            color: #555;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .high-carb-toggle-area {
+            display: none;
+            background: #fff5e6;
+            border: 1px dashed #f39c12;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            text-align: left;
+        }
+
+        /* ▲▲▲ チートデイ機能 ▲▲▲ */
+
+        /* お知らせ＆目標設定＆メーター */
+        .top-alert-box {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            cursor: pointer;
+        }
+
+        .ta-title {
+            font-weight: 900;
+            color: #d35400;
+            font-size: 13px;
+            display: block;
+            text-align: center;
+            margin-bottom: 5px;
+        }
+
+        .ta-list {
+            font-size: 12px;
+            color: #333;
+            line-height: 1.5;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        .ta-warn {
+            font-size: 11px;
+            color: #c0392b;
+            font-weight: bold;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .btn-import-huge {
+            display: block;
+            width: 100%;
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: #fff;
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(231, 76, 60, 0.3);
+        }
+
+        .tgt-sec {
+            background: #fff;
+            padding: 10px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #eee;
+        }
+
+        .tgt-tog {
+            font-weight: bold;
+            color: var(--th);
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .tgt-btns {
+            display: none;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .tg-btn {
+            padding: 8px 2px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 10px;
+            text-align: center;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+        }
+
+        .tg-btn.act {
+            background: var(--th);
+            color: #fff;
+            border-color: var(--th);
+        }
+
+        #cust-tgt {
+            display: none;
+            padding: 10px;
+            background: #f9f9f9;
+            margin-top: 10px;
+            border-radius: 8px;
+            text-align: center;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .cust-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+            margin-top: 5px;
+        }
+
+        #cust-cal {
+            width: 80px;
+            padding: 5px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            text-align: center;
+        }
+
+        .cust-btn {
+            background: var(--th);
+            color: #fff;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .alc-toggle {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px dashed #ccc;
+            font-weight: bold;
+            font-size: 12px;
+            color: var(--my);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .dash {
+            background: #fff;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            margin-bottom: 20px;
+            border: 2px solid var(--th);
+        }
+
+        .dash-t {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: var(--th);
+        }
+
+        .mtr {
+            margin-bottom: 10px;
+        }
+
+        .mtr-l {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            font-size: 13px;
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+
+        .mtr-l .lbl {
+            display: flex;
+            align-items: baseline;
+            gap: 5px;
+        }
+
+        .mtr-l .lbl span {
+            font-size: 15px;
+        }
+
+        .mtr-l .lbl small {
+            font-size: 10px;
+            color: #666;
+            font-weight: normal;
+        }
+
+        .rem {
+            color: var(--th);
+            font-weight: 900;
+            font-size: 14px;
+        }
+
+        .mtr:first-child .rem {
+            font-size: 18px;
+        }
+
+        .rem.ov {
+            color: #e74c3c;
+        }
+
+        .bar-bg {
+            position: relative;
+            height: 14px;
+            background: #eee;
+            border-radius: 7px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+        }
+
+        .bar {
+            position: absolute;
+            left: 0;
+            height: 100%;
+            background: var(--th);
+            width: 0%;
+            transition: width 0.5s;
+        }
+
+        .bar.ov {
+            background: #e74c3c;
+        }
+
+        .bar-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            font-size: 10px;
+            font-weight: 900;
+            color: #fff;
+            mix-blend-mode: difference;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        #mtr-a .bar {
+            background: var(--my);
+        }
+
+        #mtr-a .rem {
+            color: var(--my);
+        }
+
+        /* ▼▼▼ メインアクションパネル ▼▼▼ */
+        .main-actions {
+            background: #fff;
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+            margin-bottom: 20px;
+            border: 1px solid #eee;
+        }
+
+        /* 音声入力 (メインボタン) */
+        .btn-voice-main {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            background: linear-gradient(135deg, #ff4757, #ff6b81);
+            color: #fff;
+            border: none;
+            padding: 18px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3);
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin-bottom: 15px;
+        }
+
+        .btn-voice-main:active {
+            transform: scale(0.97);
+        }
+
+        /* サブボタン群 */
+        .sub-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .btn-sub-act {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: #fff;
+            border: none;
+            border-radius: 12px;
+            padding: 15px 5px;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+        }
+
+        .btn-sub-act:active {
+            transform: scale(0.97);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+        }
+
+        .btn-manual {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+        }
+
+        .btn-manual .icon {
+            font-size: 26px;
+            color: #3498db;
+        }
+
+        .btn-camera {
+            color: #2c3e50;
+            border-bottom: 3px solid #9b59b6;
+        }
+
+        .btn-camera .icon {
+            font-size: 26px;
+            color: #9b59b6;
+        }
+
+        /* 切り取り線 */
+        .util-divider {
+            border: none;
+            border-top: 2px dashed #eee;
+            margin: 20px 0 15px;
+        }
+
+        /* ユーティリティボタン (正方形 1x4) */
+        .utility-actions {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        .btn-util {
+            border: none;
+            border-radius: 12px;
+            aspect-ratio: 1 / 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 900;
+            cursor: pointer;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
+            transition: transform 0.15s;
+        }
+
+        .btn-util:active {
+            transform: scale(0.95);
+        }
+
+        .btn-util .icon {
+            font-size: 22px;
+        }
+
+        .btn-copy {
+            background: #34495e;
+            color: #fff;
+        }
+
+        .btn-req {
+            background: #f0f2f5;
+            color: #555;
+        }
+
+        .btn-recipe {
+            background: #f1c40f;
+            color: #5c3a21;
+        }
+
+        .btn-save {
+            background: linear-gradient(135deg, var(--th), #ff8bb5);
+            color: #fff;
+        }
+
+        /* 手打ち入力エリア */
+        .inp-sec {
+            background: #fff;
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+            display: none;
+            border: 2px solid #3498db;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            font-size: 14px;
+            color: var(--th);
+        }
+
+        .s-box {
+            position: relative;
+            margin-bottom: 15px;
+        }
+
+        .s-inp {
+            width: 100%;
+            padding: 12px 12px 12px 40px;
+            border-radius: 25px;
+            border: 2px solid #ddd;
+            background: var(--sb);
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        .s-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+        }
+
+        .s-res {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            max-height: 250px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .s-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .cat-grp {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .c-btn {
+            padding: 10px 5px;
+            font-size: 13px;
+            border: 1px solid var(--th);
+            background: #fff;
+            color: var(--th);
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .c-btn.act {
+            background: var(--th);
+            color: #fff;
+        }
+
+        .c-btn.fav-cat-btn {
+            border-color: var(--gd);
+            color: #d35400;
+            background: #fff8e1;
+        }
+
+        .c-btn.fav-cat-btn.act {
+            background: var(--gd);
+            color: #fff;
+        }
+
+        .c-btn.my-cat-btn {
+            border-color: var(--my);
+            color: #8e44ad;
+            background: #f3e5f5;
+        }
+
+        .c-btn.my-cat-btn.act {
+            background: var(--my);
+            color: #fff;
+        }
+
+        #f-list {
+            display: none;
+            margin-top: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #fff;
+        }
+
+        .list-head {
+            position: sticky;
+            top: 0;
+            background: #eee;
+            padding: 5px 10px;
+            font-size: 12px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .cls-btn {
+            background: #999;
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .f-btn {
+            padding: 12px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .fav-icon {
+            font-size: 20px;
+            color: #ddd;
+            padding: 0 10px;
+        }
+
+        .fav-icon.act {
+            color: var(--gd);
+        }
+
+        .del-icon {
+            font-size: 12px;
+            color: #fff;
+            background: var(--del);
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        #amt-area {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .amt-btns {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+
+        .amt-btns.rice {
+            grid-template-columns: repeat(3, 1fr);
+            margin-bottom: 5px;
+        }
+
+        .a-btn {
+            padding: 5px 2px;
+            background: #f4f4f4;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 50px;
+        }
+
+        .a-btn span:first-child {
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        .a-btn .sub-label {
+            font-size: 10px;
+            color: #666;
+            margin-bottom: 2px;
+        }
+
+        .a-btn.sel {
+            background: var(--th);
+            color: #fff;
+            border-color: var(--th);
+        }
+
+        .a-btn.sel .sub-label {
+            color: #fff;
+        }
+
+        .dir-inp {
+            grid-column: span 1;
+            border: 2px solid var(--mn);
+            border-radius: 6px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            background: #fff;
+        }
+
+        .dir-inp input {
+            width: 70%;
+            height: 100%;
+            border: none;
+            text-align: center;
+            font-weight: bold;
+            padding: 0;
+            font-size: 14px;
+        }
+
+        .unit-label {
+            font-size: 11px;
+            color: #666;
+            width: 30%;
+            text-align: center;
+            background: #eee;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .pv-bar {
+            background: linear-gradient(135deg, #fff0f6, #fff);
+            border: 2px solid var(--th);
+            border-radius: 8px;
+            padding: 10px 15px;
+            margin: 10px 0;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .reg-bd {
+            display: none;
+            background: #fdfdfd;
+            border: 2px solid var(--th);
+            border-top: 1px dashed var(--th);
+            border-radius: 0 0 8px 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .cls-bd {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #eee;
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+
+        .m-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 5px;
+        }
+
+        .m-grid input,
+        #m-name,
+        #m-cal,
+        #m-mul,
+        #m-c {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            margin-bottom: 0;
+            font-size: 14px;
+        }
+
+        .btn-add {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, var(--th), #ff8bb5);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+
+        .btn-my {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background: var(--my);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .my-manual-btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background: var(--my);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            margin-top: 15px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        /* タイムライン */
+        .tl-sec {
+            margin-bottom: 15px;
+        }
+
+        .tl-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: #fff;
+            border-left: 4px solid var(--th);
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+            margin-bottom: 8px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .tl-head.朝 {
+            border-left-color: #f1c40f;
+        }
+
+        .tl-head.昼 {
+            border-left-color: #e67e22;
+        }
+
+        .tl-head.晩 {
+            border-left-color: #34495e;
+        }
+
+        .tl-head.間食 {
+            border-left-color: #9b59b6;
+        }
+
+        .tl-stats {
+            font-size: 11px;
+            color: #666;
+            font-weight: normal;
+            text-align: right;
+        }
+
+        .f-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .f-item {
+            background: var(--ac);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 14px;
+            border-left: 2px solid transparent;
+        }
+
+        .f-item.alc {
+            border-left-color: var(--my);
+            background: #fdf5ff;
+        }
+
+        .act-btns {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            border-top: 1px dashed #eec5d5;
+            padding-top: 8px;
+            margin-top: 8px;
+        }
+
+        .l-btn {
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .b-re {
+            background: var(--add);
+        }
+
+        .b-ed {
+            background: var(--ed);
+        }
+
+        .b-del {
+            background: var(--del);
+        }
+
+        /* 下部の展開エリア */
+        .expand-area {
+            display: none;
+            background: #fff;
+            padding: 18px 15px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+            margin-bottom: 25px;
+            border: 2px solid #ddd;
+            animation: slideDown 0.3s ease;
+            position: relative;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .expand-close {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: #f0f2f5;
+            color: #666;
+            font-size: 10px;
+            font-weight: bold;
+            padding: 4px 10px;
+            border-radius: 12px;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        #hist-area {
+            border-color: var(--th);
+        }
+
+        .graph-sec {
+            border-color: #f39c12;
+        }
+
+        .body-sec {
+            border-color: var(--body);
+        }
+
+        /* グラフ・体組成 CSS省略なし */
+        .g-btns {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .g-btn {
+            padding: 5px 15px;
+            border: 1px solid #ccc;
+            border-radius: 20px;
+            background: #eee;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .g-btn.act {
+            background: var(--th);
+            color: #fff;
+            border-color: var(--th);
+        }
+
+        .chart-box {
+            height: 180px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            padding-top: 20px;
+            border-bottom: 1px solid #ccc;
+            position: relative;
+        }
+
+        .bar-grp {
+            width: 10%;
+            height: 100%;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .bar-col {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            display: flex;
+            flex-direction: column-reverse;
+            border-radius: 4px 4px 0 0;
+            overflow: hidden;
+        }
+
+        .seg-p {
+            background: #ff6b6b;
+        }
+
+        .seg-f {
+            background: #feca57;
+        }
+
+        .seg-c {
+            background: #54a0ff;
+        }
+
+        .target-line {
+            position: absolute;
+            left: 0;
+            right: 0;
+            border-top: 2px dashed #e74c3c;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .target-val {
+            position: absolute;
+            right: 0;
+            top: -18px;
+            background: #e74c3c;
+            color: #fff;
+            font-size: 10px;
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+
+        .graph-legend {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            font-size: 11px;
+            margin-top: 10px;
+        }
+
+        .leg-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .leg-box {
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+        }
+
+        .stat-row {
+            text-align: center;
+            font-size: 13px;
+            margin-top: 30px;
+            font-weight: bold;
+            color: #555;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+
+        .h-card {
+            background: #fff;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+            overflow: hidden;
+        }
+
+        .h-summary {
+            padding: 10px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            background: #fff;
+        }
+
+        .h-btns {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .h-btn {
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            color: #fff;
+            cursor: pointer;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .h-b-res {
+            background: var(--add);
+        }
+
+        .h-b-cp {
+            background: #333;
+        }
+
+        .h-b-del {
+            background: var(--del);
+        }
+
+        .h-detail {
+            display: none;
+            background: #fafafa;
+            border-top: 1px dashed #eee;
+            padding: 10px;
+        }
+
+        .hf-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            padding: 6px 0;
+            border-bottom: 1px solid #eee;
+            color: #444;
+        }
+
+        .b-toggle {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            margin-top: 15px;
+        }
+
+        .b-tog-btn {
+            padding: 6px 12px;
+            border: 1px solid var(--body);
+            border-radius: 20px;
+            color: var(--body);
+            background: #fff;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .b-tog-btn.act {
+            background: var(--body);
+            color: #fff;
+        }
+
+        .body-legend-box {
+            font-size: 11px;
+            margin-bottom: 10px;
+            background: #f9f9f9;
+            padding: 8px;
+            border-radius: 6px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .bl-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .bl-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .body-graph-box {
+            height: 200px;
+            position: relative;
+            border-bottom: 1px solid #ccc;
+            margin-bottom: 25px;
+            padding-bottom: 5px;
+        }
+
+        .body-inp-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .body-inp-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .body-inp-item span {
+            font-size: 10px;
+            color: #666;
+            margin-bottom: 2px;
+        }
+
+        .body-inp-item input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .btn-body-rec {
+            width: 100%;
+            background: var(--body);
+            color: #fff;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            margin-top: 10px;
+            cursor: pointer;
+            font-size: 15px;
+        }
+
+        .b-hist-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 8px;
+            border-bottom: 1px solid #eee;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .b-del-btn {
+            background: #ccc;
+            color: #fff;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 4px;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+
+        .g-line {
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+        }
+
+        .g-dot {
+            r: 4;
+            cursor: pointer;
+            stroke: #fff;
+            stroke-width: 1;
+        }
+
+        .g-label {
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .g-pop {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 5px;
+            border-radius: 4px;
+            font-size: 11px;
+            pointer-events: none;
+            display: none;
+            white-space: nowrap;
+            z-index: 100;
+            top: 0;
+            left: 0;
+        }
+
+        /* ▼ モーダル */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-box {
+            background: #fff;
+            padding: 25px 20px;
+            border-radius: 16px;
+            width: 85%;
+            max-width: 320px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-title {
+            font-weight: 900;
+            margin-bottom: 5px;
+            display: block;
+            color: var(--th);
+            font-size: 18px;
+        }
+
+        .modal-subtitle {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .modal-date {
+            padding: 12px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            width: 100%;
+            box-sizing: border-box;
+            text-align: center;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .auto-save-box {
+            margin: 15px 0 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            text-align: left;
+        }
+
+        .modal-btns {
+            display: flex;
+            gap: 10px;
+        }
+
+        .m-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+
+        .m-save {
+            background: var(--th);
+            color: #fff;
+        }
+
+        .m-save:active {
+            transform: scale(0.95);
+        }
+
+        .m-cancel {
+            background: #eee;
+            color: #555;
+        }
+
+        .m-cancel:active {
+            background: #e0e0e0;
+        }
+
+        /* ▼ タブバー */
+        .bottom-tab-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding-bottom: env(safe-area-inset-bottom);
+            height: 65px;
+            z-index: 9000;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .tab-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 25%;
+            height: 100%;
+            color: #888;
+            cursor: pointer;
+            text-decoration: none;
+            transition: color 0.2s;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .tab-item:active {
+            background: #f9f9f9;
+        }
+
+        .tab-item .icon {
+            font-size: 22px;
+            margin-bottom: 2px;
+        }
+
+        .tab-item .label {
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .tab-item.active {
+            color: var(--th);
+        }
+
+        /* ▼ フローティングボタン */
+        #tama-chat-btn {
+            position: fixed;
+            bottom: calc(75px + env(safe-area-inset-bottom));
+            right: 15px;
+            z-index: 9500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--th);
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            box-shadow: 0 4px 15px rgba(245, 90, 148, 0.4);
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #tama-chat-btn:active {
+            transform: scale(0.92);
+        }
+
+        #tama-chat-btn img {
+            width: 44px;
+            height: 44px;
+            object-fit: cover;
+            border-radius: 50%;
+            display: block;
+            pointer-events: none;
+            border: 2px solid #fff;
+            background-color: #fff;
+            flex-shrink: 0;
+        }
+
+        /* ▼ 通常チャットウィンドウ */
+        #tama-chat-window {
+            position: fixed;
+            bottom: calc(85px + env(safe-area-inset-bottom));
+            right: 15px;
+            width: 350px;
+            height: 500px;
+            max-height: 65vh;
+            background-color: #fff;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            z-index: 10000;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid #ddd;
+        }
+
+        .chat-header {
+            background-color: var(--th);
+            color: white;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+        }
+
+        .ch-close {
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+
+        .chat-body {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            background-color: #f5f6fa;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .msg {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            max-width: 100%;
+        }
+
+        .msg.user {
+            flex-direction: row-reverse;
+        }
+
+        .msg .icon {
+            flex-shrink: 0;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            background: #fff;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .msg .icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .msg.user .icon {
+            display: none;
+        }
+
+        .msg .text {
+            background: #fff;
+            padding: 10px 14px;
+            border-radius: 18px;
+            border-top-left-radius: 2px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            max-width: 80%;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .msg.user .text {
+            background: var(--th);
+            color: white;
+            border-top-left-radius: 18px;
+            border-top-right-radius: 2px;
+        }
+
+        .chat-footer {
+            padding: 10px;
+            background: #fff;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        #chat-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            outline: none;
+            font-size: 14px;
+        }
+
+        .chat-footer #chat-send {
+            padding: 0 16px;
+            height: 40px;
+            border-radius: 20px;
+            background: var(--th);
+            color: white;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+        }
+
+        /* ▼ ボイス専用UI */
+        #voice-ui-window {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 75vh;
+            background: #fff;
+            border-radius: 24px 24px 0 0;
+            box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.15);
+            z-index: 10500;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        #voice-ui-window.active {
+            transform: translateY(0);
+        }
+
+        .v-header {
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #eee;
+        }
+
+        .v-title {
+            font-weight: 900;
+            font-size: 18px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .v-close {
+            width: 32px;
+            height: 32px;
+            background: #f0f2f5;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #666;
+            cursor: pointer;
+        }
+
+        .v-mic-container {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+        }
+
+        .v-mic-btn {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ff4757, #ff6b81);
+            color: #fff;
+            font-size: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 10px 25px rgba(255, 71, 87, 0.4);
+            transition: transform 0.2s;
+        }
+
+        .v-mic-btn:active {
+            transform: scale(0.9);
+        }
+
+        .v-footer {
+            padding: 15px 20px calc(15px + env(safe-area-inset-bottom));
+            background: #fff;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 10px;
+        }
+
+        .v-footer input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            font-size: 15px;
+            outline: none;
+            background: #f9f9f9;
+        }
+
+        .v-footer button {
+            background: var(--th);
+            color: #fff;
+            border: none;
+            padding: 0 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* ▼ 追加＆修正：トグルスイッチとマイクアニメーション */
+        .toggle-switch-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            width: 100%;
+            margin: 0;
+            padding: 5px 0;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 28px;
+            flex-shrink: 0;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .3s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        input:checked+.slider {
+            background-color: var(--add);
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(22px);
+        }
+
+        #voice-ui-window .v-body {
+            flex: none;
+            padding: 10px 0 5px;
+            background: #fafafa;
+            border-top: 1px solid #eee;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #voice-ui-window .v-mic-container {
+            height: 80px;
+        }
+
+        #voice-ui-window .v-status {
+            font-size: 14px;
+            margin-bottom: 5px;
+            min-height: 20px;
+            font-weight: bold;
+            color: var(--th);
+        }
+
+        /* ボイスマイク波紋 */
+        .v-mic-btn.listening {
+            animation: v-pulse 1.5s infinite;
+            background: #ff4757;
+        }
+
+        @keyframes v-pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.6);
+            }
+
+            70% {
+                box-shadow: 0 0 0 30px rgba(255, 71, 87, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 71, 87, 0);
+            }
+        }
+
+        /* 通常マイク波紋 */
+        #mic-btn.recording {
+            background: #ff4757 !important;
+            color: white !important;
+            animation: c-pulse 1.5s infinite;
+        }
+
+        @keyframes c-pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.6);
+            }
+
+            70% {
+                box-shadow: 0 0 0 15px rgba(255, 71, 87, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 71, 87, 0);
+            }
+        }
+    </style>
 </head>
 
 <body>
 
-<div class="header">
-    <h1>
-        <img src="tama_chara_mini.png" alt="キャラ" style="height:40px; vertical-align:middle; margin-right:10px; border-radius:50%; border:2px solid #fff;">
-        たまフィットPFC
-    </h1>
-</div>
-
-<div class="container">
-    
-    <div class="top-alert-box" onclick="const list = this.querySelector('.ta-list'); list.style.display = list.style.display === 'block' ? 'none' : 'block'">
-        <span class="ta-title">🚨 新UIアップデート！ (タップで詳細)</span>
-        <div class="ta-list" style="display:none;">
-            ・🥚 レイアウトが最新アプリ風に大進化！<br>
-            ・🎤 「ボイス専用UI」でハンズフリー記録が超快適に！<br>
-            ・💾 保存機能が自動化！(設定で変更可)
-        </div>
-        <div class="ta-warn">⚠️ 旧アプリをご利用の方へ<br>下のボタンからデータを引き継いでください。</div>
-        <button class="btn-import-huge" onclick="event.stopPropagation(); document.getElementById('imp-file-top').click()">
-            📥 データの復元 (バックアップを読込)
-        </button>
-        <input type="file" id="imp-file-top" accept=".json,application/json" style="display:none" onchange="importData(this)">
+    <div class="header">
+        <h1>
+            <img src="tama_chara_mini.png" alt="キャラ"
+                style="height:40px; vertical-align:middle; margin-right:10px; border-radius:50%; border:2px solid #fff;">
+            たまフィットPFC
+        </h1>
     </div>
 
-    <div class="tgt-sec">
-        <div class="tgt-tog" onclick="toggleTgt()">⚙️ 目標設定: <span id="tgt-disp">設定なし</span> ▼</div>
-        <div class="tgt-btns" id="tgt-btns"></div>
-        <div id="cust-tgt" style="display:none;">
-            <div class="cust-row">
-                <input type="text" inputmode="decimal" id="cust-cal" placeholder="Cal">
-                <select id="pfc-mode" class="pfc-sel" style="padding: 6px; font-size: 14px; border-radius: 4px; border: 1px solid #ccc;">
-                    <option value="std">標準 (3:2:5)</option>
-                    <option value="lowfat">ローファット (3:1:6)</option>
-                    <option value="muscle">筋肥大 (4:2:4)</option>
-                    <option value="keto">ケト (3:6:1)</option>
-                </select>
-                <button class="cust-btn" onclick="applyCust()">設定</button>
-            </div>
-            <div class="alc-toggle">
-                <input type="checkbox" id="alc-mode-chk" onchange="toggleAlcMode()"> <label for="alc-mode-chk" style="margin:0;cursor:pointer;">🍺 酒飲みモード (PFCA管理)</label>
-            </div>
-        </div>
-    </div>
-    
-    <div class="dash">
-        <div class="dash-t">今日の目標 <span id="pfc-ratio-disp">(3:2:5)</span></div>
-        <div class="mtr"><div class="mtr-l"><div class="lbl"><span>Cal</span><small>摂取: <span id="cur-cal">0</span></small></div><span id="rem-cal" class="rem"></span></div><div class="bar-bg"><div id="bar-cal" class="bar"></div><div id="bar-text-cal" class="bar-text"></div></div></div>
-        <div class="mtr"><div class="mtr-l"><div class="lbl"><span>P</span><small>摂取: <span id="cur-p">0</span>g</small></div><span id="rem-p" class="rem"></span></div><div class="bar-bg"><div id="bar-p" class="bar"></div><div id="bar-text-p" class="bar-text"></div></div></div>
-        <div class="mtr"><div class="mtr-l"><div class="lbl"><span>F</span><small>摂取: <span id="cur-f">0</span>g</small></div><span id="rem-f" class="rem"></span></div><div class="bar-bg"><div id="bar-f" class="bar"></div><div id="bar-text-f" class="bar-text"></div></div></div>
-        <div class="mtr"><div class="mtr-l"><div class="lbl"><span>C</span><small>摂取: <span id="cur-c">0</span>g</small></div><span id="rem-c" class="rem"></span></div><div class="bar-bg"><div id="bar-c" class="bar"></div><div id="bar-text-c" class="bar-text"></div></div></div>
-        <div class="mtr" id="mtr-a" style="display:none;"><div class="mtr-l"><div class="lbl"><span style="color:var(--my)">A (アルコール)</span></div><span id="rem-a" class="rem" style="font-size:11px;">※1g=7kcalで計算</span></div><div class="bar-bg"><div id="bar-a" class="bar"></div><div id="bar-text-a" class="bar-text"></div></div></div>
-    </div>
+    <div class="container">
 
-    <div class="main-actions">
-        <button class="btn-voice-main" onclick="openVoiceUI()">
-            🎤 音声でカンタン記録・相談
-        </button>
-        
-        <div class="sub-actions">
-            <button class="btn-sub-act btn-manual" onclick="toggleManualPanel()">
-                <div class="icon">⌨️</div>
-                <div>手打ち入力</div>
-            </button>
-            <button class="btn-sub-act btn-camera" onclick="openCameraChoiceModal()">
-                <div class="icon">📷</div>
-                <div>カメラで予測</div>
-            </button>
-            <input type="file" accept="image/*" capture="environment" id="camera-take-input" style="display:none;" onchange="handleCameraChoice(event)">
-            <input type="file" accept="image/*" id="camera-library-input" style="display:none;" onchange="handleCameraChoice(event)">
-        </div>
-
-        <hr class="util-divider">
-
-        <div class="utility-actions">
-            <button class="btn-util btn-copy" onclick="cpRes()">
-                <div class="icon">📝</div>
-                <div>コピー</div>
-            </button>
-            <button class="btn-util btn-req" onclick="window.open('https://docs.google.com/forms/d/e/1FAIpQLSem4li3oXO5_JFqTUUk40dM_Zej4WInhDPilGAIFUzU97opGg/viewform?usp=publish-editor', '_blank')">
-                <div class="icon">📮</div>
-                <div>ご要望</div>
-            </button>
-            <button class="btn-util btn-recipe" onclick="window.open('https://delishkitchen.tv/', '_blank')">
-                <div class="icon">🍳</div>
-                <div>レシピ</div>
-            </button>
-            <button class="btn-util btn-save" onclick="openSaveModal()">
-                <div class="icon">💾</div>
-                <div>日付･保存</div>
-            </button>
-        </div>
-    </div>
-    
-    <div class="inp-sec" id="manual-inp-sec">
-        <div class="s-box"><span class="s-icon">🔍</span><input type="text" class="s-inp" id="s-inp" placeholder="食品を検索" oninput="filterF()"><div class="s-res" id="s-res"></div></div>
-        <label>1. カテゴリを選ぶ</label>
-        <div class="cat-grp" id="cat-btns"></div>
-        <div id="f-list"></div>
-        <div id="amt-area">
-            <label style="margin-top:10px;">2. 量を選ぶ</label>
-            <div class="amt-btns rice" id="rice-btns" style="display:none;"></div>
-            <div class="amt-btns" id="pst-btns"></div>
-            <div id="pv-bar" class="pv-bar" style="display:none;" onclick="togBd()">
-                <div id="pv-name" style="font-weight:bold;color:var(--th)"></div>
-                <div id="pv-stat" style="font-size:13px;font-weight:bold;"></div>
-                <div style="font-size:10px;color:#888;text-align:right;">🖊️タップして詳細・微調整</div>
-            </div>
-            <div id="reg-bd" class="reg-bd">
-                <div class="cls-bd" onclick="clsBd()">✕ 閉じる</div>
-                <div style="font-size:11px;color:#666;margin-bottom:2px;">時間帯</div>
-                <select id="m-time" style="width:100%; padding:8px; border-radius:4px; margin-bottom:8px; border:1px solid #ddd; font-family: inherit; font-size:14px;">
-                    <option value="朝">☀️ 朝 (4:00-11:00)</option>
-                    <option value="昼">☁️ 昼 (11:00-16:00)</option>
-                    <option value="晩">🌙 晩 (16:00-24:00)</option>
-                    <option value="間食">☕ 間食</option>
-                </select>
-                <div style="font-size:11px;color:#666">食品名</div><input type="text" id="m-name" style="font-size: 16px; margin-bottom: 8px;">
-                <div class="m-grid" style="grid-template-columns: repeat(4, 1fr);">
-                    <div><div style="font-size:11px;color:#666">P</div><input type="text" inputmode="decimal" id="m-p" oninput="calcM()"></div>
-                    <div><div style="font-size:11px;color:#666">F</div><input type="text" inputmode="decimal" id="m-f" oninput="calcM()"></div>
-                    <div><div style="font-size:11px;color:#666">C</div><input type="text" inputmode="decimal" id="m-c" oninput="calcM()"></div>
-                    <div id="m-a-wrap" style="display:none;"><div style="font-size:11px;color:var(--my)">A (酒)</div><input type="text" inputmode="decimal" id="m-a" oninput="calcM()"></div>
+        <!-- 新・VIP長方形チケットバナー -->
+        <div id="premium-ticket-wrap" class="premium-ticket-wrap" onclick="openPreCheatModal()">
+            <div class="premium-ticket">
+                <div class="ticket-content">
+                    <span class="ticket-title">Cheat Day Pass</span>
+                    <span id="ticket-cooldown-text" class="ticket-sub">週に1回、ご褒美の日を。</span>
                 </div>
-                <div style="margin-top:5px;border-top:1px dashed #ddd;padding-top:5px">
-                    <div style="font-size:11px;color:var(--th);font-weight:bold">倍率・個数</div><input type="text" inputmode="decimal" id="m-mul" value="1" style="text-align:center;font-weight:bold" oninput="calcM()">
-                </div>
-                <div style="font-size:11px;color:#666">Cal (自動/上書き)</div><input type="text" inputmode="decimal" id="m-cal" style="background:#f9f9f9;font-weight:bold" oninput="calcM()">
-                <button class="btn-my" onclick="regMyFood()">💾 この内容をMy食品に登録</button>
-            </div>
-            <button id="btn-reg" class="btn-add" onclick="addM()">リストに追加する</button>
-        </div>
-        <button class="my-manual-btn" onclick="openMan()">▼ 完全手入力・My食品登録</button>
-    </div>
-    
-    <h3 style="color:var(--th);text-align:center; margin-top:35px;">今日の記録</h3>
-    <div id="timeline-area"></div>
-    <div style="text-align:right;font-size:18px; margin-top:10px;">総摂取: <span id="tot-cal" style="color:var(--th);font-weight:bold;font-size:22px;">0</span> kcal</div>
-    
-    <div id="hist-area" class="expand-area">
-        <div class="expand-close" onclick="this.parentElement.style.display='none'">✕ 閉じる</div>
-        <p style="text-align:center;font-weight:bold;color:var(--th);margin-top:0;">【過去の記録】</p>
-        <div id="h-list"></div>
-    </div>
-    
-    <div id="graph-area" class="expand-area graph-sec">
-        <div class="expand-close" onclick="this.parentElement.style.display='none'">✕ 閉じる</div>
-        <div class="g-btns" style="margin-top:10px;">
-            <button class="g-btn act" onclick="drawGraph('week',this)">週間</button>
-            <button class="g-btn" onclick="drawGraph('month',this)">月間</button>
-        </div>
-        <div class="graph-legend">
-            <div class="leg-item"><div class="leg-box seg-p"></div>P</div>
-            <div class="leg-item"><div class="leg-box seg-f"></div>F</div>
-            <div class="leg-item"><div class="leg-box seg-c"></div>C</div>
-        </div>
-        <div id="chart-box" class="chart-box"></div>
-        <div id="stat-txt" class="stat-row">グラフの棒をタップで詳細表示</div>
-    </div>
-
-    <div id="body-content" class="expand-area body-sec">
-        <div class="expand-close" onclick="this.parentElement.style.display='none'">✕ 閉じる</div>
-        <div style="text-align:center; font-weight:bold; color:var(--body); margin-bottom:10px;">📉 体組成・ボディメイク</div>
-        <div class="b-toggle">
-            <div class="b-tog-btn act" onclick="drawBodyGraph('A', this)">モードA<br>(体重・脂肪率・ウエスト)</div>
-            <div class="b-tog-btn" onclick="drawBodyGraph('B', this)">モードB<br>(除脂肪・脂肪量)</div>
-        </div>
-        <div id="body-legend" class="body-legend-box"></div>
-        <div id="body-chart-area" class="body-graph-box"></div>
-        <div id="body-pop" class="g-pop"></div>
-        <div class="body-inp-grid">
-            <div class="body-inp-item"><span>日付</span><input type="date" id="b-date"></div>
-            <div class="body-inp-item"><span>体重(kg)</span><input type="text" inputmode="decimal" id="b-weight" placeholder="60.0"></div>
-            <div class="body-inp-item"><span>体脂肪率(%)</span><input type="text" inputmode="decimal" id="b-fat" placeholder="20.0"></div>
-            <div class="body-inp-item"><span>ウエスト(cm)</span><input type="text" inputmode="decimal" id="b-waist" placeholder="70.0"></div>
-        </div>
-        <button class="btn-body-rec" onclick="saveBody()">記録する</button>
-        <div style="margin-top:20px;border-top:1px dashed #ccc;padding-top:10px;">
-            <div style="text-align:center;font-size:12px;color:#666;margin-bottom:5px;">履歴一覧 (タップで修正)</div>
-            <div id="body-hist-list" style="max-height:150px;overflow-y:auto;background:#f9f9f9;border-radius:8px;"></div>
-        </div>
-    </div>
-
-    <!-- バックアップボタン（アプリ下部） -->
-    <div style="margin-top: 20px; padding-bottom: 20px;">
-        <p style="text-align:center; font-size:12px; color:#666; font-weight:bold; margin-bottom:8px;">万が一のデータ消失・機種変更に備えて</p>
-        <button class="btn-import-huge" style="background: linear-gradient(135deg, #3498db, #2980b9); box-shadow: 0 4px 15px rgba(52,152,219,0.3);" onclick="exportData()">
-            💾 バックアップをダウンロード保存
-        </button>
-    </div>
-</div>
-
-<div id="reset-modal" class="modal-overlay">
-    <div class="modal-box">
-        <span class="modal-title">記録の保存と日付</span>
-        <span class="modal-subtitle">過去の記録を追加したり、手動で保存できます。</span>
-        
-        <div style="text-align: left; margin-bottom: 5px; font-size: 12px; font-weight: bold; color: #555;">記録する日付を選択:</div>
-        <input type="date" id="reset-date" class="modal-date">
-        
-        <div class="auto-save-box">
-            <label class="toggle-switch-label">
-                <span style="font-size: 14px; font-weight: bold; color: #2c3e50;">毎日0時に自動保存する</span>
-                <div class="toggle-switch">
-                    <input type="checkbox" id="auto-reset-chk" onchange="toggleAutoReset()">
-                    <span class="slider"></span>
-                </div>
-            </label>
-            <div style="font-size: 11px; color: #888; margin-top: 6px; line-height: 1.4;">※オンにしておくと、毎日0時に自動で「昨日の記録」として保存され、画面がリセットされます。</div>
-        </div>
-
-        <div class="modal-btns">
-            <button class="m-btn m-cancel" onclick="closeResetModal()">閉じる</button>
-            <button class="m-btn m-save" onclick="confirmReset()">手動で保存・リセット</button>
-        </div>
-    </div>
-</div>
-
-<div id="camera-choice-modal" class="modal-overlay">
-    <div class="modal-box">
-        <span class="modal-title">画像を選択</span>
-        <span class="modal-subtitle" style="margin-bottom: 20px;">画像を何から取得するか選んでください</span>
-        
-        <div style="display: flex; flex-direction: column; gap: 12px;">
-            <button class="m-btn" style="background: var(--th); color: #fff; padding: 15px; font-size: 16px;" onclick="selectCameraTake()">
-                📷 カメラを起動
-            </button>
-            <button class="m-btn" style="background: var(--ed); color: #fff; padding: 15px; font-size: 16px;" onclick="selectCameraLibrary()">
-                🖼️ ライブラリから選ぶ
-            </button>
-            <button class="m-btn m-cancel" style="margin-top: 5px;" onclick="closeCameraChoiceModal()">
-                キャンセル
-            </button>
-        </div>
-    </div>
-</div>
-
-<div id="tama-chat-btn" onclick="toggleChat()">
-    <img src="new_tama.png" alt="たまちゃん">
-</div>
-
-<div id="tama-chat-window">
-    <div class="chat-header">
-        <div class="ch-title">🥚 たまちゃんコーチ</div>
-        <div class="ch-close" onclick="toggleChat()">×</div>
-    </div>
-    <div class="chat-body" id="chat-messages">
-        <div class="msg bot">
-            <div class="icon"><img src="new_tama.png"></div>
-            <div class="text">手打ちでの修正や、細かい相談はここで聞くたまよ！</div>
-        </div>
-    </div>
-    <div class="chat-footer">
-        <button id="mic-btn" onclick="toggleMic()" title="音声で入力" style="background: #f0f2f5; color: #555; border-radius: 50%; width: 40px; height: 40px; border: none; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; flex-shrink: 0; transition: all 0.3s ease;">🎤</button>
-        <input type="text" id="chat-input" placeholder="メッセージを入力..." onkeypress="if(event.key === 'Enter' && !event.isComposing) sendTamaChat()">
-        <button id="chat-send" onclick="sendTamaChat()">送信</button>
-    </div>
-</div>
-
-<div id="voice-ui-window">
-    <div class="v-header">
-        <div class="v-title">🎤 音声アシスタント</div>
-        <div class="v-close" onclick="closeVoiceUI()">×</div>
-    </div>
-    
-    <div class="chat-body" id="v-chat-messages" style="flex: 1; padding: 15px; overflow-y: auto; background-color: #f5f6fa; display: flex; flex-direction: column; gap: 15px;">
-        <div class="msg bot">
-            <div class="icon"><img src="new_tama.png"></div>
-            <div class="text">音声で何でも記録・相談するたまよ！</div>
-        </div>
-    </div>
-
-    <div class="v-body">
-        <div class="v-status" id="v-status-text">たまちゃんが聞いてるたま！</div>
-        <div class="v-mic-container">
-            <div class="v-mic-btn pulse-animation" id="v-main-mic" onclick="toggleVoiceMic()">
-                🎙️
+                <div id="ticket-count-badge" class="ticket-badge">x 1</div>
             </div>
         </div>
+
+        <div id="cheat-panel">
+            <div
+                style="font-weight:900; color:#d4af37; font-size:16px; margin-bottom:8px; text-shadow: 1px 1px 2px rgba(0,0,0,0.1);">
+                🎉 超級ご褒美チートデイ 🎉</div>
+            <div style="font-size:12px; color:#555; margin-bottom:12px; text-align:left;">
+                カロリーや栄養バランスのストレスから解放！<br>基本は気にせず楽しもう！でも意識が高い人は記録もできるよ！</div>
+            <div
+                style="background:#f9f9f9; padding:10px; border-radius:8px; border:1px solid #eee; margin-bottom:10px;">
+                <label class="toggle-switch-label"
+                    style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:13px; font-weight:bold; color:#333;">今日食べたものを記録する</span>
+                    <div class="toggle-switch" style="margin:0;">
+                        <input type="checkbox" id="cheat-record-toggle" onchange="toggleCheatRecord()">
+                        <span class="slider"></span>
+                    </div>
+                </label>
+            </div>
+
+            <div id="high-carb-area" class="high-carb-toggle-area">
+                <label class="toggle-switch-label"
+                    style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:12px; font-weight:bold; color:#d35400;">🔥 ハイカーボモード<br><span
+                            style="font-size:10px;color:#888;">(目標Cal2倍・C超特化)</span></span>
+                    <div class="toggle-switch" style="margin:0;">
+                        <input type="checkbox" id="high-carb-toggle" onchange="toggleHighCarb()">
+                        <span class="slider"></span>
+                    </div>
+                </label>
+            </div>
+
+            <button class="cheat-cancel-btn" onclick="cancelCheatDay()">✕ チートデイをパス（チケットを戻す）</button>
+        </div>
+
+        <div class="top-alert-box"
+            onclick="const list = this.querySelector('.ta-list'); list.style.display = list.style.display === 'block' ? 'none' : 'block'">
+            <span class="ta-title">🚨 新UIアップデート！ (タップで詳細)</span>
+            <div class="ta-list" style="display:none;">
+                ・🥚 レイアウトが最新アプリ風に大進化！<br>
+                ・🎤 「ボイス専用UI」でハンズフリー記録が超快適に！<br>
+                ・💾 保存機能が自動化！(設定で変更可)
+            </div>
+            <div class="ta-warn">⚠️ 旧アプリをご利用の方へ<br>下のボタンからデータを引き継いでください。</div>
+            <button class="btn-import-huge"
+                onclick="event.stopPropagation(); document.getElementById('imp-file-top').click()">
+                📥 データの復元 (バックアップを読込)
+            </button>
+            <input type="file" id="imp-file-top" accept=".json,application/json" style="display:none"
+                onchange="importData(this)">
+        </div>
+
+        <div class="tgt-sec">
+            <div class="tgt-tog" onclick="toggleTgt()">⚙️ 目標設定: <span id="tgt-disp">設定なし</span> ▼</div>
+            <div class="tgt-btns" id="tgt-btns"></div>
+            <div id="cust-tgt" style="display:none;">
+                <div class="cust-row">
+                    <input type="text" inputmode="decimal" id="cust-cal" placeholder="Cal">
+                    <select id="pfc-mode" class="pfc-sel"
+                        style="padding: 6px; font-size: 14px; border-radius: 4px; border: 1px solid #ccc;">
+                        <option value="std">標準 (3:2:5)</option>
+                        <option value="lowfat">ローファット (3:1:6)</option>
+                        <option value="muscle">筋肥大 (4:2:4)</option>
+                        <option value="keto">ケト (3:6:1)</option>
+                    </select>
+                    <button class="cust-btn" onclick="applyCust()">設定</button>
+                </div>
+                <div class="alc-toggle">
+                    <input type="checkbox" id="alc-mode-chk" onchange="toggleAlcMode()"> <label for="alc-mode-chk"
+                        style="margin:0;cursor:pointer;">🍺 酒飲みモード (PFCA管理)</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="dash">
+            <div class="dash-t">今日の目標 <span id="pfc-ratio-disp">(3:2:5)</span></div>
+            <div class="mtr">
+                <div class="mtr-l">
+                    <div class="lbl"><span>Cal</span><small>摂取: <span id="cur-cal">0</span></small></div><span
+                        id="rem-cal" class="rem"></span>
+                </div>
+                <div class="bar-bg">
+                    <div id="bar-cal" class="bar"></div>
+                    <div id="bar-text-cal" class="bar-text"></div>
+                </div>
+            </div>
+            <div class="mtr">
+                <div class="mtr-l">
+                    <div class="lbl"><span>P</span><small>摂取: <span id="cur-p">0</span>g</small></div><span id="rem-p"
+                        class="rem"></span>
+                </div>
+                <div class="bar-bg">
+                    <div id="bar-p" class="bar"></div>
+                    <div id="bar-text-p" class="bar-text"></div>
+                </div>
+            </div>
+            <div class="mtr">
+                <div class="mtr-l">
+                    <div class="lbl"><span>F</span><small>摂取: <span id="cur-f">0</span>g</small></div><span id="rem-f"
+                        class="rem"></span>
+                </div>
+                <div class="bar-bg">
+                    <div id="bar-f" class="bar"></div>
+                    <div id="bar-text-f" class="bar-text"></div>
+                </div>
+            </div>
+            <div class="mtr">
+                <div class="mtr-l">
+                    <div class="lbl"><span>C</span><small>摂取: <span id="cur-c">0</span>g</small></div><span id="rem-c"
+                        class="rem"></span>
+                </div>
+                <div class="bar-bg">
+                    <div id="bar-c" class="bar"></div>
+                    <div id="bar-text-c" class="bar-text"></div>
+                </div>
+            </div>
+            <div class="mtr" id="mtr-a" style="display:none;">
+                <div class="mtr-l">
+                    <div class="lbl"><span style="color:var(--my)">A (アルコール)</span></div><span id="rem-a" class="rem"
+                        style="font-size:11px;">※1g=7kcalで計算</span>
+                </div>
+                <div class="bar-bg">
+                    <div id="bar-a" class="bar"></div>
+                    <div id="bar-text-a" class="bar-text"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-actions">
+            <button class="btn-voice-main" onclick="openVoiceUI()">
+                🎤 音声でカンタン記録・相談
+            </button>
+
+            <div class="sub-actions">
+                <button class="btn-sub-act btn-manual" onclick="toggleManualPanel()">
+                    <div class="icon">⌨️</div>
+                    <div>手打ち入力</div>
+                </button>
+                <button class="btn-sub-act btn-camera" onclick="openCameraChoiceModal()">
+                    <div class="icon">📷</div>
+                    <div>カメラで予測</div>
+                </button>
+                <input type="file" accept="image/*" capture="environment" id="camera-take-input" style="display:none;"
+                    onchange="handleCameraChoice(event)">
+                <input type="file" accept="image/*" id="camera-library-input" style="display:none;"
+                    onchange="handleCameraChoice(event)">
+            </div>
+
+            <hr class="util-divider">
+
+            <div class="utility-actions">
+                <button class="btn-util btn-copy" onclick="cpRes()">
+                    <div class="icon">📝</div>
+                    <div>コピー</div>
+                </button>
+                <button class="btn-util btn-req"
+                    onclick="window.open('https://docs.google.com/forms/d/e/1FAIpQLSem4li3oXO5_JFqTUUk40dM_Zej4WInhDPilGAIFUzU97opGg/viewform?usp=publish-editor', '_blank')">
+                    <div class="icon">📮</div>
+                    <div>ご要望</div>
+                </button>
+                <button class="btn-util btn-recipe" onclick="window.open('https://delishkitchen.tv/', '_blank')">
+                    <div class="icon">🍳</div>
+                    <div>レシピ</div>
+                </button>
+                <button class="btn-util btn-save" onclick="openSaveModal()">
+                    <div class="icon">💾</div>
+                    <div>日付･保存</div>
+                </button>
+            </div>
+        </div>
+
+        <div class="inp-sec" id="manual-inp-sec">
+            <div class="s-box"><span class="s-icon">🔍</span><input type="text" class="s-inp" id="s-inp"
+                    placeholder="食品を検索" oninput="filterF()">
+                <div class="s-res" id="s-res"></div>
+            </div>
+            <label>1. カテゴリを選ぶ</label>
+            <div class="cat-grp" id="cat-btns"></div>
+            <div id="f-list"></div>
+            <div id="amt-area">
+                <label style="margin-top:10px;">2. 量を選ぶ</label>
+                <div class="amt-btns rice" id="rice-btns" style="display:none;"></div>
+                <div class="amt-btns" id="pst-btns"></div>
+                <div id="pv-bar" class="pv-bar" style="display:none;" onclick="togBd()">
+                    <div id="pv-name" style="font-weight:bold;color:var(--th)"></div>
+                    <div id="pv-stat" style="font-size:13px;font-weight:bold;"></div>
+                    <div style="font-size:10px;color:#888;text-align:right;">🖊️タップして詳細・微調整</div>
+                </div>
+                <div id="reg-bd" class="reg-bd">
+                    <div class="cls-bd" onclick="clsBd()">✕ 閉じる</div>
+                    <div style="font-size:11px;color:#666;margin-bottom:2px;">時間帯</div>
+                    <select id="m-time"
+                        style="width:100%; padding:8px; border-radius:4px; margin-bottom:8px; border:1px solid #ddd; font-family: inherit; font-size:14px;">
+                        <option value="朝">☀️ 朝 (4:00-11:00)</option>
+                        <option value="昼">☁️ 昼 (11:00-16:00)</option>
+                        <option value="晩">🌙 晩 (16:00-24:00)</option>
+                        <option value="間食">☕ 間食</option>
+                    </select>
+                    <div style="font-size:11px;color:#666">食品名</div><input type="text" id="m-name"
+                        style="font-size: 16px; margin-bottom: 8px;">
+                    <div class="m-grid" style="grid-template-columns: repeat(4, 1fr);">
+                        <div>
+                            <div style="font-size:11px;color:#666">P</div><input type="text" inputmode="decimal"
+                                id="m-p" oninput="calcM()">
+                        </div>
+                        <div>
+                            <div style="font-size:11px;color:#666">F</div><input type="text" inputmode="decimal"
+                                id="m-f" oninput="calcM()">
+                        </div>
+                        <div>
+                            <div style="font-size:11px;color:#666">C</div><input type="text" inputmode="decimal"
+                                id="m-c" oninput="calcM()">
+                        </div>
+                        <div id="m-a-wrap" style="display:none;">
+                            <div style="font-size:11px;color:var(--my)">A (酒)</div><input type="text"
+                                inputmode="decimal" id="m-a" oninput="calcM()">
+                        </div>
+                    </div>
+                    <div style="margin-top:5px;border-top:1px dashed #ddd;padding-top:5px">
+                        <div style="font-size:11px;color:var(--th);font-weight:bold">倍率・個数</div><input type="text"
+                            inputmode="decimal" id="m-mul" value="1" style="text-align:center;font-weight:bold"
+                            oninput="calcM()">
+                    </div>
+                    <div style="font-size:11px;color:#666">Cal (自動/上書き)</div><input type="text" inputmode="decimal"
+                        id="m-cal" style="background:#f9f9f9;font-weight:bold" oninput="calcM()">
+                    <button class="btn-my" onclick="regMyFood()">💾 この内容をMy食品に登録</button>
+                </div>
+                <button id="btn-reg" class="btn-add" onclick="addM()">リストに追加する</button>
+            </div>
+            <button class="my-manual-btn" onclick="openMan()">▼ 完全手入力・My食品登録</button>
+        </div>
+
+        <h3 style="color:var(--th);text-align:center; margin-top:35px;">今日の記録</h3>
+        <div id="timeline-area"></div>
+        <div style="text-align:right;font-size:18px; margin-top:10px;">総摂取: <span id="tot-cal"
+                style="color:var(--th);font-weight:bold;font-size:22px;">0</span> kcal</div>
+
+        <div id="hist-area" class="expand-area">
+            <div class="expand-close" onclick="this.parentElement.style.display='none'">✕ 閉じる</div>
+            <p style="text-align:center;font-weight:bold;color:var(--th);margin-top:0;">【過去の記録】</p>
+            <div id="h-list"></div>
+        </div>
+
+        <div id="graph-area" class="expand-area graph-sec">
+            <div class="expand-close" onclick="this.parentElement.style.display='none'">✕ 閉じる</div>
+            <div class="g-btns" style="margin-top:10px;">
+                <button class="g-btn act" onclick="drawGraph('week',this)">週間</button>
+                <button class="g-btn" onclick="drawGraph('month',this)">月間</button>
+            </div>
+            <div class="graph-legend">
+                <div class="leg-item">
+                    <div class="leg-box seg-p"></div>P
+                </div>
+                <div class="leg-item">
+                    <div class="leg-box seg-f"></div>F
+                </div>
+                <div class="leg-item">
+                    <div class="leg-box seg-c"></div>C
+                </div>
+            </div>
+            <div id="chart-box" class="chart-box"></div>
+            <div id="stat-txt" class="stat-row">グラフの棒をタップで詳細表示</div>
+        </div>
+
+        <div id="body-content" class="expand-area body-sec">
+            <div class="expand-close" onclick="this.parentElement.style.display='none'">✕ 閉じる</div>
+            <div style="text-align:center; font-weight:bold; color:var(--body); margin-bottom:10px;">📉 体組成・ボディメイク</div>
+            <div class="b-toggle">
+                <div class="b-tog-btn act" onclick="drawBodyGraph('A', this)">モードA<br>(体重・脂肪率・ウエスト)</div>
+                <div class="b-tog-btn" onclick="drawBodyGraph('B', this)">モードB<br>(除脂肪・脂肪量)</div>
+            </div>
+            <div id="body-legend" class="body-legend-box"></div>
+            <div id="body-chart-area" class="body-graph-box"></div>
+            <div id="body-pop" class="g-pop"></div>
+            <div class="body-inp-grid">
+                <div class="body-inp-item"><span>日付</span><input type="date" id="b-date"></div>
+                <div class="body-inp-item"><span>体重(kg)</span><input type="text" inputmode="decimal" id="b-weight"
+                        placeholder="60.0"></div>
+                <div class="body-inp-item"><span>体脂肪率(%)</span><input type="text" inputmode="decimal" id="b-fat"
+                        placeholder="20.0"></div>
+                <div class="body-inp-item"><span>ウエスト(cm)</span><input type="text" inputmode="decimal" id="b-waist"
+                        placeholder="70.0"></div>
+            </div>
+            <button class="btn-body-rec" onclick="saveBody()">記録する</button>
+            <div style="margin-top:20px;border-top:1px dashed #ccc;padding-top:10px;">
+                <div style="text-align:center;font-size:12px;color:#666;margin-bottom:5px;">履歴一覧 (タップで修正)</div>
+                <div id="body-hist-list" style="max-height:150px;overflow-y:auto;background:#f9f9f9;border-radius:8px;">
+                </div>
+            </div>
+        </div>
+
+        <!-- バックアップボタン（アプリ下部） -->
+        <div style="margin-top: 20px; padding-bottom: 20px;">
+            <p style="text-align:center; font-size:12px; color:#666; font-weight:bold; margin-bottom:8px;">
+                万が一のデータ消失・機種変更に備えて</p>
+            <button class="btn-import-huge"
+                style="background: linear-gradient(135deg, #3498db, #2980b9); box-shadow: 0 4px 15px rgba(52,152,219,0.3);"
+                onclick="exportData()">
+                💾 バックアップをダウンロード保存
+            </button>
+        </div>
     </div>
-    
-    <div class="v-footer">
-        <input type="text" id="v-chat-input" placeholder="文字で補足入力もできるたま！">
-        <button onclick="sendVoiceChat()">送信</button>
+
+    <div id="reset-modal" class="modal-overlay">
+        <div class="modal-box">
+            <span class="modal-title">記録の保存と日付</span>
+            <span class="modal-subtitle">過去の記録を追加したり、手動で保存できます。</span>
+
+            <div style="text-align: left; margin-bottom: 5px; font-size: 12px; font-weight: bold; color: #555;">
+                記録する日付を選択:</div>
+            <input type="date" id="reset-date" class="modal-date">
+
+            <div class="auto-save-box">
+                <label class="toggle-switch-label">
+                    <span style="font-size: 14px; font-weight: bold; color: #2c3e50;">毎日0時に自動保存する</span>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="auto-reset-chk" onchange="toggleAutoReset()">
+                        <span class="slider"></span>
+                    </div>
+                </label>
+                <div style="font-size: 11px; color: #888; margin-top: 6px; line-height: 1.4;">
+                    ※オンにしておくと、毎日0時に自動で「昨日の記録」として保存され、画面がリセットされます。</div>
+            </div>
+
+            <div class="modal-btns">
+                <button class="m-btn m-cancel" onclick="closeResetModal()">閉じる</button>
+                <button class="m-btn m-save" onclick="confirmReset()">手動で保存・リセット</button>
+            </div>
+        </div>
     </div>
-</div>
 
-<div class="bottom-tab-bar">
-    <div class="tab-item active" onclick="goHome(this)">
-        <div class="icon">🏠</div>
-        <div class="label">ホーム</div>
+    <div id="camera-choice-modal" class="modal-overlay">
+        <div class="modal-box">
+            <span class="modal-title">画像を選択</span>
+            <span class="modal-subtitle" style="margin-bottom: 20px;">画像を何から取得するか選んでください</span>
+
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <button class="m-btn" style="background: var(--th); color: #fff; padding: 15px; font-size: 16px;"
+                    onclick="selectCameraTake()">
+                    📷 カメラを起動
+                </button>
+                <button class="m-btn" style="background: var(--ed); color: #fff; padding: 15px; font-size: 16px;"
+                    onclick="selectCameraLibrary()">
+                    🖼️ ライブラリから選ぶ
+                </button>
+                <button class="m-btn m-cancel" style="margin-top: 5px;" onclick="closeCameraChoiceModal()">
+                    キャンセル
+                </button>
+            </div>
+        </div>
     </div>
-    <div class="tab-item" onclick="openTabPanel('hist-area', this)">
-        <div class="icon">📅</div>
-        <div class="label">履歴</div>
+
+    <div id="cheat-pre-modal" class="modal-overlay">
+        <div class="modal-box" style="border: 2px solid #d4af37;">
+            <span class="modal-title" style="color:#d4af37; font-size: 20px;">VIP Cheat Day Pass</span>
+            <span class="modal-subtitle" style="margin-top: 15px; font-size: 14px; font-weight:bold; color:#333;">⚠️ ご注意
+                ⚠️<br><br>このチケットを消費すると、<br><span
+                    style="color:#e74c3c">「今日（または予約した日）から1週間」は再利用できなくなります。</span><br>（連続でのチートデイはできません）</span>
+            <style>
+                /* ▼▼▼ グラフ・統計UI 改善 ▼▼▼ */
+                #chart-box {
+                    display: flex;
+                    align-items: flex-end;
+                    justify-content: space-around;
+                    height: 200px;
+                    margin-top: 20px;
+                    padding-bottom: 25px;
+                    position: relative;
+                    border-bottom: 2px solid #ecf0f1;
+                }
+
+                .bar-grp {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    height: 100%;
+                    justify-content: flex-end;
+                    width: 12%;
+                    position: relative;
+                    cursor: pointer;
+                    transition: transform 0.2s;
+                }
+
+                .bar-grp:active {
+                    transform: scale(0.95);
+                }
+
+                .bar-col {
+                    width: 100%;
+                    background: rgba(0, 0, 0, 0.03);
+                    /* background for empty space */
+                    border-radius: 8px;
+                    /* sleeker roundness */
+                    overflow: hidden;
+                    display: flex;
+                    flex-direction: column-reverse;
+                    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02), 0 4px 12px rgba(0, 0, 0, 0.06);
+                    /* アニメーション追加: 下から上に伸びる */
+                    transform-origin: bottom;
+                    animation: grow-up 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+                }
+
+                @keyframes grow-up {
+                    0% {
+                        transform: scaleY(0);
+                        opacity: 0;
+                    }
+
+                    100% {
+                        transform: scaleY(1);
+                        opacity: 1;
+                    }
+                }
+
+                .seg-p,
+                .seg-f,
+                .seg-c,
+                .seg-a {
+                    width: 100%;
+                    /* Apple Health風のシームレスなグラデーションと境界 */
+                    border-top: 2px solid #fff;
+                    transition: all 0.3s;
+                }
+
+                /* 超プレミアムなグラデーション (フィジーク/Apple Healthスタイル) */
+                .seg-p {
+                    background: linear-gradient(180deg, #ff3b30 0%, #ff2d55 100%);
+                    z-index: 4;
+                    box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.3);
+                }
+
+                .seg-f {
+                    background: linear-gradient(180deg, #ffcc00 0%, #ff9500 100%);
+                    z-index: 3;
+                    box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.3);
+                }
+
+                .seg-c {
+                    background: linear-gradient(180deg, #34c759 0%, #30b0c7 100%);
+                    z-index: 2;
+                    border-top: none;
+                    box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.3);
+                }
+
+                .seg-a {
+                    background: linear-gradient(180deg, #af52de 0%, #5e5ce6 100%);
+                    z-index: 1;
+                    border-top: 2px solid #fff;
+                    box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.3);
+                }
+
+                .bar-lbl {
+                    position: absolute;
+                    bottom: -22px;
+                    font-size: 10px;
+                    color: #7f8c8d;
+                    font-weight: bold;
+                    white-space: nowrap;
+                }
+
+                .target-line {
+                    position: absolute;
+                    width: 100%;
+                    border-top: 2px dashed #e74c3c;
+                    left: 0;
+                    z-index: 0;
+                    opacity: 0.6;
+                    pointer-events: none;
+                }
+
+                .target-val {
+                    position: absolute;
+                    right: 0;
+                    top: -16px;
+                    font-size: 10px;
+                    color: #e74c3c;
+                    font-weight: bold;
+                    background: rgba(255, 255, 255, 0.9);
+                    padding: 2px 4px;
+                    border-radius: 4px;
+                }
+
+                /* グラフの吹き出しツールチップ (Advanced Dark Glassmorphism) */
+                .chart-tooltip {
+                    position: absolute;
+                    bottom: 115%;
+                    left: 50%;
+                    transform: translateX(-50%) translateY(10px);
+                    background: rgba(28, 28, 30, 0.85);
+                    /* ダークな半透明 */
+                    backdrop-filter: blur(16px);
+                    -webkit-backdrop-filter: blur(16px);
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
+                    border-radius: 12px;
+                    padding: 10px 14px;
+                    font-size: 11px;
+                    font-weight: 700;
+                    color: #f2f2f7;
+                    white-space: nowrap;
+                    z-index: 100;
+                    opacity: 0;
+                    pointer-events: none;
+                    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                }
+
+                .chart-tooltip::after {
+                    content: '';
+                    position: absolute;
+                    top: 100%;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    border-width: 6px;
+                    border-style: solid;
+                    border-color: rgba(28, 28, 30, 0.85) transparent transparent transparent;
+                }
+
+                .bar-grp.sc-act .chart-tooltip {
+                    opacity: 1;
+                    transform: translateX(-50%) translateY(0);
+                }
+
+                .tooltip-val {
+                    display: inline-block;
+                    margin-right: 6px;
+                }
+
+                .tooltip-val.p {
+                    color: #ff3b30;
+                }
+
+                .tooltip-val.f {
+                    color: #ffcc00;
+                }
+
+                .tooltip-val.c {
+                    color: #34c759;
+                }
+
+                .tooltip-val.a {
+                    color: #af52de;
+                }
+
+                /* ▼▼▼ 空の際のデザイン (Empty State) ▼▼▼ */
+                .empty-state {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 30px 10px;
+                    color: #95a5a6;
+                    text-align: center;
+                }
+
+                .empty-state .icon {
+                    font-size: 50px;
+                    margin-bottom: 10px;
+                    opacity: 0.5;
+                    animation: float 3s ease-in-out infinite;
+                }
+
+                .empty-state p {
+                    font-size: 14px;
+                    font-weight: bold;
+                    margin: 0;
+                }
+
+                @keyframes float {
+                    0% {
+                        transform: translateY(0px);
+                    }
+
+                    50% {
+                        transform: translateY(-10px);
+                    }
+
+                    100% {
+                        transform: translateY(0px);
+                    }
+                }
+
+                /* SVGグラフのパスやドットのスタイリング */
+                .g-line {
+                    fill: none;
+                    stroke-width: 3;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    filter: drop-shadow(0px 4px 6px rgba(0, 0, 0, 0.15));
+                    /* 影をつけて立体的に */
+                    animation: draw-line 1.5s ease-out forwards;
+                }
+
+                @keyframes draw-line {
+                    from {
+                        stroke-dasharray: 0, 1000;
+                    }
+
+                    to {
+                        stroke-dasharray: 1000, 1000;
+                    }
+                }
+
+                .g-area {
+                    /* グラフ底のグラデーション */
+                    opacity: 0;
+                    animation: fade-in-up 1s ease-out 0.5s forwards;
+                }
+
+                @keyframes fade-in-up {
+                    from {
+                        opacity: 0;
+                        transform: translateY(10px);
+                    }
+
+                    to {
+                        opacity: 0.2;
+                        transform: translateY(0);
+                    }
+                }
+
+                .g-dot {
+                    transition: all 0.2s;
+                    cursor: pointer;
+                    filter: drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.2));
+                    transform-box: fill-box;
+                    transform-origin: center;
+                }
+
+                .g-dot:hover {
+                    r: 6;
+                    stroke: #fff;
+                    stroke-width: 2;
+                }
+
+                .g-label {
+                    font-size: 10px;
+                    fill: #7f8c8d;
+                    font-weight: bold;
+                }
+            </style>
+            <div style="font-size:12px; color:#666; margin-top:10px; text-align:left;">本当に使いますか？</div>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button class="m-btn m-cancel" onclick="closePreCheatModal()">やめる</button>
+                <button class="m-btn"
+                    style="background: #111; color:#d4af37; border: 1px solid #d4af37; box-shadow:0 4px 10px rgba(212,175,55,0.3);"
+                    onclick="confirmPreCheatModal()">次へ</button>
+            </div>
+        </div>
     </div>
-    <div class="tab-item" onclick="openTabPanel('graph-area', this)">
-        <div class="icon">📊</div>
-        <div class="label">統計</div>
+
+    <div id="cheat-ticket-modal" class="modal-overlay">
+        <div class="modal-box" style="border: 2px solid #d4af37;">
+            <span class="modal-title" style="color:#d4af37; font-size: 20px;">VIP Cheat Day Pass</span>
+            <span class="modal-subtitle"
+                style="margin-top: 10px; font-size: 13px;">今日はチートデイにする？<br>ストレスを忘れて思いっきり楽しもう！</span>
+            <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
+                <button class="m-btn"
+                    style="background: linear-gradient(135deg, #111 0%, #333 100%); color:#d4af37; border: 1px solid #d4af37; font-size:16px; box-shadow:0 4px 10px rgba(212,175,55,0.3);"
+                    onclick="startCheatDay(true)">
+                    ✨ 今すぐ使う
+                </button>
+                <button class="m-btn" style="background:#fff; color:#111; border:2px solid #111; font-size:14px;"
+                    onclick="reserveCheatDay()">
+                    📅 カレンダーで予約する
+                </button>
+                <button class="m-btn m-cancel" style="margin-top:5px;" onclick="closeCheatModal()">やめる</button>
+            </div>
+        </div>
     </div>
-    <div class="tab-item" onclick="openTabPanel('body-content', this)">
-        <div class="icon">📉</div>
-        <div class="label">体組成</div>
+
+    <div id="tama-chat-btn" onclick="toggleChat()">
+        <img src="new_tama.png" alt="たまちゃん">
     </div>
-</div>
 
-<script>
-// ▼ UI制御用スクリプト ▼
-function toggleManualPanel() {
-    const el = document.getElementById('manual-inp-sec');
-    if (el.style.display === 'block') {
-        el.style.display = 'none';
-    } else {
-        el.style.display = 'block';
-        setTimeout(() => el.scrollIntoView({behavior: 'smooth', block: 'start'}), 100);
-    }
-}
+    <div id="tama-chat-window">
+        <div class="chat-header">
+            <div class="ch-title">🥚 たまちゃんコーチ</div>
+            <div class="ch-close" onclick="toggleChat()">×</div>
+        </div>
+        <div class="chat-body" id="chat-messages">
+            <div class="msg bot">
+                <div class="icon"><img src="new_tama.png"></div>
+                <div class="text">手打ちでの修正や、細かい相談はここで聞くたまよ！</div>
+            </div>
+        </div>
+        <div class="chat-footer">
+            <button id="mic-btn" onclick="toggleMic()" title="音声で入力"
+                style="background: #f0f2f5; color: #555; border-radius: 50%; width: 40px; height: 40px; border: none; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; flex-shrink: 0; transition: all 0.3s ease;">🎤</button>
+            <input type="text" id="chat-input" placeholder="メッセージを入力..."
+                onkeypress="if(event.key === 'Enter' && !event.isComposing) sendTamaChat()">
+            <button id="chat-send" onclick="sendTamaChat()">送信</button>
+        </div>
+    </div>
 
-// ▼ ホームに戻って全て閉じる関数 (新規追加)
-function goHome(tabEl) {
-    document.querySelectorAll('.expand-area').forEach(el => el.style.display = 'none');
-    document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
-    if(tabEl) tabEl.classList.add('active');
-    window.scrollTo({top:0, behavior:'smooth'});
-}
+    <div id="voice-ui-window">
+        <div class="v-header">
+            <div class="v-title">🎤 音声アシスタント</div>
+            <div class="v-close" onclick="closeVoiceUI()">×</div>
+        </div>
 
-// ▼ 既存の関数を書き換え (タブの色切り替え同期)
-function openTabPanel(id, tabEl) {
-    document.querySelectorAll('.expand-area').forEach(el => el.style.display = 'none');
-    document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
-    if(tabEl) tabEl.classList.add('active');
+        <div class="chat-body" id="v-chat-messages"
+            style="flex: 1; padding: 15px; overflow-y: auto; background-color: #f5f6fa; display: flex; flex-direction: column; gap: 15px;">
+            <div class="msg bot">
+                <div class="icon"><img src="new_tama.png"></div>
+                <div class="text">音声で何でも記録・相談するたまよ！</div>
+            </div>
+        </div>
 
-    const panel = document.getElementById(id);
-    panel.style.display = 'block';
-    if(typeof rHist === 'function' && id === 'hist-area') rHist();
-    if(typeof drawGraph === 'function' && id === 'graph-area') drawGraph('week', document.querySelector('.g-btn'));
-    if(typeof drawBodyGraph === 'function' && id === 'body-content') { drawBodyGraph('A', document.querySelector('.b-tog-btn')); renderBodyList(); }
-    setTimeout(() => panel.scrollIntoView({behavior: 'smooth', block: 'center'}), 100);
-}
+        <div class="v-body">
+            <div class="v-status" id="v-status-text">たまちゃんが聞いてるたま！</div>
+            <div class="v-mic-container">
+                <div class="v-mic-btn pulse-animation" id="v-main-mic" onclick="toggleVoiceMic()">
+                    🎙️
+                </div>
+            </div>
+        </div>
 
-// ★モーダル開閉
-function openSaveModal() {
-    document.getElementById('reset-modal').style.display = 'flex';
-    if (typeof TG !== 'undefined' && document.getElementById('auto-reset-chk')) {
-        document.getElementById('auto-reset-chk').checked = TG.autoReset;
-    }
-}
-function closeResetModal() {
-    document.getElementById('reset-modal').style.display = 'none';
-}
+        <div class="v-footer">
+            <input type="text" id="v-chat-input" placeholder="文字で補足入力もできるたま！">
+            <button onclick="sendVoiceChat()">送信</button>
+        </div>
+    </div>
 
-function openCameraChoiceModal() {
-    document.getElementById('camera-choice-modal').style.display = 'flex';
-}
-function closeCameraChoiceModal() {
-    document.getElementById('camera-choice-modal').style.display = 'none';
-}
-function selectCameraTake() {
-    closeCameraChoiceModal();
-    document.getElementById('camera-take-input').click();
-}
-function selectCameraLibrary() {
-    closeCameraChoiceModal();
-    document.getElementById('camera-library-input').click();
-}
-function handleCameraChoice(event) {
-    if (typeof window.handleCameraUpload === 'function') {
-        window.handleCameraUpload(event);
-    }
-}
+    <!-- ▼ Manager Mode Button ▼ -->
+    <div style="text-align: center; padding: 20px 0 40px; margin-bottom: 70px;">
+        <span onclick="tryOpenManagerMode()"
+            style="font-size: 11px; color: #ccc; text-decoration: underline; cursor: pointer;">マネージャーモード</span>
+    </div>
 
-function openVoiceUI() {
-    const el = document.getElementById('voice-ui-window');
-    el.style.display = 'flex';
-    setTimeout(() => {
-        el.classList.add('active');
-        // 開いた瞬間に自動でマイクON
-        if (typeof window.toggleVoiceMic === 'function' && typeof isRecording !== 'undefined' && !isRecording) {
-            window.toggleVoiceMic();
+    <div class="bottom-tab-bar">
+        <div class="tab-item active" onclick="goHome(this)">
+            <div class="icon">🏠</div>
+            <div class="label">ホーム</div>
+        </div>
+        <div class="tab-item" onclick="openTabPanel('hist-area', this)">
+            <div class="icon">📅</div>
+            <div class="label">履歴</div>
+        </div>
+        <div class="tab-item" onclick="openTabPanel('graph-area', this)">
+            <div class="icon">📊</div>
+            <div class="label">統計</div>
+        </div>
+        <div class="tab-item" onclick="openTabPanel('body-content', this)">
+            <div class="icon">📉</div>
+            <div class="label">体組成</div>
+        </div>
+    </div>
+
+    <!-- ▼ Manager Mode Modal ▼ -->
+    <div id="manager-modal" class="modal-overlay" style="display:none; z-index: 100000;">
+        <div class="modal-box"
+            style="border: 3px solid #3498db; text-align: left; max-height: 85vh; overflow-y: auto; background: #fafafa;">
+            <h3 style="color:#3498db; margin-top:0; border-bottom: 2px dashed #3498db; padding-bottom: 10px;">🛠
+                製作者マネージャー</h3>
+
+            <div style="margin-bottom: 15px; border-bottom: 1px solid #ddd; padding-bottom: 10px;">
+                <strong style="color: #2c3e50;">🎟 チートデイチケット</strong><br>
+                <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
+                    <span>現在: <strong id="mgr-ticket-count" style="font-size: 18px; color: #d4af37;">0</strong> 枚</span>
+                    <button class="m-btn" style="padding: 5px 15px; width: auto; background: #2ecc71;"
+                        onclick="mgrAddTicket(1)">+1 追加</button>
+                    <button class="m-btn" style="padding: 5px 15px; width: auto; background: #e74c3c;"
+                        onclick="mgrAddTicket(-1)">-1 消費</button>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 15px; border-bottom: 1px solid #ddd; padding-bottom: 15px;">
+                <strong style="color: #2c3e50;">📊 今日のPFC操作スライダー</strong><br>
+                <small
+                    style="color:#666; display:block; margin-bottom: 10px;">※目標値に対する割合(0〜150%)を動かすと、即座にダミー食品が追加・更新されます。</small>
+
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                    <strong style="width: 20px; color: #e74c3c;">P:</strong>
+                    <input type="range" id="mgr-slide-p" min="0" max="150" value="0" style="flex: 1;"
+                        oninput="mgrApplyPFC()">
+                    <span style="width: 40px; text-align: right;"><strong id="mgr-val-p">0</strong>%</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                    <strong style="width: 20px; color: #f1c40f;">F:</strong>
+                    <input type="range" id="mgr-slide-f" min="0" max="150" value="0" style="flex: 1;"
+                        oninput="mgrApplyPFC()">
+                    <span style="width: 40px; text-align: right;"><strong id="mgr-val-f">0</strong>%</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <strong style="width: 20px; color: #3498db;">C:</strong>
+                    <input type="range" id="mgr-slide-c" min="0" max="150" value="0" style="flex: 1;"
+                        oninput="mgrApplyPFC()">
+                    <span style="width: 40px; text-align: right;"><strong id="mgr-val-c">0</strong>%</span>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 15px; border-bottom: 1px solid #ddd; padding-bottom: 10px;">
+                <strong style="color: #2c3e50;">💾 デバッグ・強制操作</strong><br>
+                <div style="margin-top: 5px; display: flex; flex-direction: column; gap: 8px;">
+                    <button class="m-btn" style="background:#f39c12; color:#fff;"
+                        onclick="mgrGenerateDummy()">過去7日分のダミー履歴生成</button>
+                    <button class="m-btn" style="background:#e74c3c;" onclick="mgrHardReset()">⛔
+                        Storage完全初期化（全リセット）</button>
+                </div>
+            </div>
+
+            <button class="m-btn m-cancel" style="background: #ccc; margin-top: 10px;"
+                onclick="document.getElementById('manager-modal').style.display='none'">閉じる</button>
+        </div>
+    </div>
+
+    <!-- ▼ UI制御用スクリプト ▼ -->
+    <script>
+        // ▼ UI制御用スクリプト ▼
+        let isCheatDay = false;
+        let recordOnCheatDay = false;
+        let isHighCarbMode = false;
+
+        function openPreCheatModal() { document.getElementById('cheat-pre-modal').style.display = 'flex'; }
+        function closePreCheatModal() { document.getElementById('cheat-pre-modal').style.display = 'none'; }
+        function confirmPreCheatModal() { closePreCheatModal(); openCheatModal(); }
+
+        function openCheatModal() { document.getElementById('cheat-ticket-modal').style.display = 'flex'; }
+        function closeCheatModal() { document.getElementById('cheat-ticket-modal').style.display = 'none'; }
+        function reserveCheatDay() {
+            if (typeof consumeCheatTicket === 'function') consumeCheatTicket();
+            alert('カレンダーで予約しました！（※今回は表示のみ）\n1週間後まで再利用できなくなりました。');
+            closeCheatModal();
         }
-    }, 10);
-}
+        function startCheatDay(active) {
+            isCheatDay = active;
+            if (active) {
+                document.body.classList.add('cheat-mode');
+                document.getElementById('cheat-panel').style.display = 'block';
+                if (typeof consumeCheatTicket === 'function') consumeCheatTicket();
+                if (typeof showToast === 'function') showToast("🎉 チートデイ発動！今日は楽しむたま！\n（1週間使えなくなりました）");
+                toggleCheatRecord();
+            }
+            closeCheatModal();
+        }
 
-function closeVoiceUI() {
-    const el = document.getElementById('voice-ui-window');
-    el.classList.remove('active');
-    // 閉じたらマイクも強制終了
-    if (typeof forceStopMic === 'function') forceStopMic();
-    setTimeout(() => el.style.display = 'none', 300);
-}
+        function cancelCheatDay() {
+            isCheatDay = false;
+            document.body.classList.remove('cheat-mode');
+            document.getElementById('cheat-panel').style.display = 'none';
 
-// ボイス画面のEnterキー送信
-document.addEventListener('DOMContentLoaded', () => {
-    const vInput = document.getElementById('v-chat-input');
-    if (vInput) {
-        vInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
-                if (typeof sendVoiceChat === 'function') sendVoiceChat();
+            document.querySelector('.dash').style.display = 'block';
+            document.querySelector('.tgt-sec').style.display = 'block';
+
+            if (typeof restoreCheatTicket === 'function') restoreCheatTicket();
+
+            if (typeof showToast === 'function') showToast("チートデイをパスしたたま！チケットを戻したよ！");
+
+            // リセット
+            recordOnCheatDay = false;
+            document.getElementById('cheat-record-toggle').checked = false;
+            isHighCarbMode = false;
+            document.getElementById('high-carb-toggle').checked = false;
+            if (typeof upd === 'function') upd();
+        }
+
+        function toggleCheatRecord() {
+            recordOnCheatDay = document.getElementById('cheat-record-toggle').checked;
+            const hcArea = document.getElementById('high-carb-area');
+            const dashArea = document.querySelector('.dash');
+            const tgtArea = document.querySelector('.tgt-sec');
+
+            if (recordOnCheatDay) {
+                if (hcArea) hcArea.style.display = 'block';
+                if (dashArea) dashArea.style.display = 'block';
+                if (tgtArea) tgtArea.style.display = 'block';
+            } else {
+                if (hcArea) hcArea.style.display = 'none';
+                if (dashArea) dashArea.style.display = 'none';
+                if (tgtArea) tgtArea.style.display = 'none';
+
+                isHighCarbMode = false;
+                if (document.getElementById('high-carb-toggle')) document.getElementById('high-carb-toggle').checked = false;
+                if (typeof upd === 'function') upd();
+            }
+        }
+
+        function toggleHighCarb() {
+            isHighCarbMode = document.getElementById('high-carb-toggle').checked;
+            if (typeof upd === 'function') upd();
+        }
+
+        function toggleManualPanel() {
+            const el = document.getElementById('manual-inp-sec');
+            if (el.style.display === 'block') {
+                el.style.display = 'none';
+            } else {
+                el.style.display = 'block';
+                setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+            }
+        }
+
+        // ▼ ホームに戻って全て閉じる関数 (新規追加)
+        function goHome(tabEl) {
+            document.querySelectorAll('.expand-area').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
+            if (tabEl) tabEl.classList.add('active');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // ▼ 既存の関数を書き換え (タブの色切り替え同期)
+        function openTabPanel(id, tabEl) {
+            document.querySelectorAll('.expand-area').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
+            if (tabEl) tabEl.classList.add('active');
+
+            const panel = document.getElementById(id);
+            panel.style.display = 'block';
+            if (typeof rHist === 'function' && id === 'hist-area') rHist();
+            if (typeof drawGraph === 'function' && id === 'graph-area') drawGraph('week', document.querySelector('.g-btn'));
+            if (typeof drawBodyGraph === 'function' && id === 'body-content') { drawBodyGraph('A', document.querySelector('.b-tog-btn')); renderBodyList(); }
+            setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+        }
+
+        // ★モーダル開閉
+        function openSaveModal() {
+            document.getElementById('reset-modal').style.display = 'flex';
+            if (typeof TG !== 'undefined' && document.getElementById('auto-reset-chk')) {
+                document.getElementById('auto-reset-chk').checked = TG.autoReset;
+            }
+        }
+        function closeResetModal() {
+            document.getElementById('reset-modal').style.display = 'none';
+        }
+
+        function openCameraChoiceModal() {
+            document.getElementById('camera-choice-modal').style.display = 'flex';
+        }
+        function closeCameraChoiceModal() {
+            document.getElementById('camera-choice-modal').style.display = 'none';
+        }
+        function selectCameraTake() {
+            closeCameraChoiceModal();
+            document.getElementById('camera-take-input').click();
+        }
+        function selectCameraLibrary() {
+            closeCameraChoiceModal();
+            document.getElementById('camera-library-input').click();
+        }
+        function handleCameraChoice(event) {
+            if (typeof window.handleCameraUpload === 'function') {
+                window.handleCameraUpload(event);
+            }
+        }
+
+        function openVoiceUI() {
+            const el = document.getElementById('voice-ui-window');
+            el.style.display = 'flex';
+            setTimeout(() => {
+                el.classList.add('active');
+                // 開いた瞬間に自動でマイクON
+                if (typeof window.toggleVoiceMic === 'function' && typeof isRecording !== 'undefined' && !isRecording) {
+                    window.toggleVoiceMic();
+                }
+            }, 10);
+        }
+
+        function closeVoiceUI() {
+            const el = document.getElementById('voice-ui-window');
+            el.classList.remove('active');
+            // 閉じたらマイクも強制終了
+            if (typeof forceStopMic === 'function') forceStopMic();
+            setTimeout(() => el.style.display = 'none', 300);
+        }
+
+        // ボイス画面のEnterキー送信
+        document.addEventListener('DOMContentLoaded', () => {
+            const vInput = document.getElementById('v-chat-input');
+            if (vInput) {
+                vInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+                        if (typeof sendVoiceChat === 'function') sendVoiceChat();
+                    }
+                });
             }
         });
-    }
-});
-</script>
+    </script>
 
-<script src="database.js"></script>
-<script src="tamachan-data.js"></script>
-<script src="app.js"></script>
-<script src="ai.js"></script>
-<script>
-if ('serviceWorker' in navigator) { window.addEventListener('load', function() { navigator.serviceWorker.register('sw.js'); }); }
-</script>
+    <script src="database.js"></script>
+    <script src="tamachan-data.js"></script>
+    <script src="app.js"></script>
+    <script src="ai.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js'); }); }
+    </script>
 </body>
+
 </html>
