@@ -596,15 +596,16 @@ function drawBodyGraph(mode, btn) {
 
 // ▼▼▼ マネージャーモード (デバッグ用) ▼▼▼
 function tryOpenManagerMode() {
-    const pwd = prompt("製作者専用パスワードを入力 (0922)");
-    if (pwd === "0922") {
-        document.getElementById('manager-modal').style.display = 'flex';
-        const mgrTick = document.getElementById('mgr-ticket-count');
-        if (mgrTick) mgrTick.textContent = TG.cheatTickets !== undefined ? TG.cheatTickets : (TG.cheatLastUsedDate ? 0 : 1);
-        mgrUpdateSlidersFromCurrent();
-    } else if (pwd !== null) {
-        alert("パスワードが違います");
-    }
+    if (!confirm(
+        "【警告】マニアック・開発者専用モードです。\n\n" +
+        "ダミーデータの生成など、表示を無理やり切り替える機能が含まれます。\n" +
+        "意図しない表示になる恐縮があります。進みますか？"
+    )) return;
+
+    document.getElementById('manager-modal').style.display = 'flex';
+    const mgrTick = document.getElementById('mgr-ticket-count');
+    if (mgrTick) mgrTick.textContent = TG.cheatTickets !== undefined ? TG.cheatTickets : (TG.cheatLastUsedDate ? 0 : 1);
+    mgrUpdateSlidersFromCurrent();
 }
 
 function mgrAddTicket(diff) {
