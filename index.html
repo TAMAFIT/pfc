@@ -149,6 +149,51 @@
             }
         }
 
+        /* --- チートデイ専用プレミアムUI --- */
+        body.cheat-mode .main-actions {
+            background: linear-gradient(135deg, #2b1f0e 0%, #1a1a1a 50%, #362908 100%);
+            border: 1px solid #d4af37;
+            box-shadow: 0 4px 20px rgba(212, 175, 55, 0.3);
+            color: #fff;
+        }
+
+        body.cheat-mode .main-actions button,
+        body.cheat-mode .main-actions .btn-util {
+            color: #d4af37;
+            border-color: rgba(212, 175, 55, 0.5);
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        body.cheat-mode .main-actions .btn-voice-main {
+            background: linear-gradient(135deg, #d4af37 0%, #aa8529 100%);
+            color: #fff;
+            border: none;
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        body.cheat-mode #tama-chat-btn {
+            background: linear-gradient(135deg, #d4af37 0%, #aa8529 100%);
+            border: 2px solid #fff;
+            box-shadow: 0 4px 20px rgba(212, 175, 55, 0.6), inset 0 2px 5px rgba(255, 255, 255, 0.5);
+        }
+
+        body.cheat-mode .sticky-footer {
+            background: rgba(26, 26, 26, 0.95);
+            border-top: 1px solid #d4af37;
+            box-shadow: 0 -4px 15px rgba(212, 175, 55, 0.2);
+        }
+
+        body.cheat-mode .footer-btn {
+            color: #d4af37;
+        }
+
+        body.cheat-mode .footer-btn.btn-primary {
+            background: linear-gradient(135deg, #d4af37 0%, #aa8529 100%);
+            color: #fff;
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
+        }
+
         /* 新・プレミアムチケットUI */
         .premium-ticket-wrap {
             margin-bottom: 15px;
@@ -239,25 +284,32 @@
 
         #cheat-panel {
             display: none;
-            background: #fff;
+            background: linear-gradient(135deg, #D4AF37 0%, #AA8529 100%);
             padding: 15px;
             border-radius: 12px;
-            border: 2px solid #d4af37;
-            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+            border: 1px solid #FFDF73;
+            box-shadow: 0 8px 25px rgba(212, 175, 55, 0.5), inset 0 2px 10px rgba(255, 255, 255, 0.3);
             margin-bottom: 15px;
             text-align: center;
+            color: #fff;
         }
 
         .cheat-cancel-btn {
-            background: #eee;
-            border: none;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.5);
             padding: 8px 15px;
             border-radius: 20px;
             font-size: 12px;
             font-weight: bold;
-            color: #555;
+            color: #fff;
             cursor: pointer;
             margin-top: 10px;
+            transition: all 0.2s;
+        }
+
+        .cheat-cancel-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
         }
 
         .high-carb-toggle-area {
@@ -2048,15 +2100,17 @@
 
         <div id="cheat-panel">
             <div
-                style="font-weight:900; color:#d4af37; font-size:16px; margin-bottom:8px; text-shadow: 1px 1px 2px rgba(0,0,0,0.1);">
+                style="font-weight:900; color:#fff; font-size:18px; margin-bottom:8px; text-shadow: 0 2px 4px rgba(0,0,0,0.3); letter-spacing: 1px;">
                 🎉 超級ご褒美チートデイ 🎉</div>
-            <div style="font-size:12px; color:#555; margin-bottom:12px; text-align:left;">
+            <div
+                style="font-size:12px; color:rgba(255,255,255,0.9); margin-bottom:12px; text-align:left; line-height:1.4;">
                 カロリーや栄養バランスのストレスから解放！<br>基本は気にせず楽しもう！でも意識が高い人は記録もできるよ！</div>
             <div
-                style="background:#f9f9f9; padding:10px; border-radius:8px; border:1px solid #eee; margin-bottom:10px;">
+                style="background:rgba(255,255,255,0.15); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.3); margin-bottom:10px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);">
                 <label class="toggle-switch-label"
                     style="display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-size:13px; font-weight:bold; color:#333;">今日食べたものを記録する</span>
+                    <span
+                        style="font-size:13px; font-weight:bold; color:#fff; text-shadow: 0 1px 2px rgba(0,0,0,0.2);">今日食べたものを記録する</span>
                     <div class="toggle-switch" style="margin:0;">
                         <input type="checkbox" id="cheat-record-toggle" onchange="toggleCheatRecord()">
                         <span class="slider"></span>
@@ -2064,11 +2118,14 @@
                 </label>
             </div>
 
-            <div id="high-carb-area" class="high-carb-toggle-area">
+            <div id="high-carb-area" class="high-carb-toggle-area"
+                style="background:rgba(255,255,255,0.15); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.3); margin-bottom:10px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);">
                 <label class="toggle-switch-label"
                     style="display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-size:12px; font-weight:bold; color:#d35400;">🔥 ハイカーボモード<br><span
-                            style="font-size:10px;color:#888;">(目標Cal2倍・C超特化)</span></span>
+                    <span
+                        style="font-size:12px; font-weight:bold; color:#fff; text-shadow: 0 1px 2px rgba(0,0,0,0.2);">🔥
+                        ハイカーボモード<br><span style="font-size:10px;color:rgba(255,255,255,0.7);">
+                            (目標Cal2倍・C超特化)</span></span>
                     <div class="toggle-switch" style="margin:0;">
                         <input type="checkbox" id="high-carb-toggle" onchange="toggleHighCarb()">
                         <span class="slider"></span>
@@ -2378,7 +2435,7 @@
     <div id="camera-choice-modal" class="modal-overlay">
         <div class="modal-box">
             <span class="modal-title">画像を選択</span>
-            <span class="modal-subtitle" style="margin-bottom: 20px;">画像を何から取得するか選んでください</span>
+            <span class="modal-subtitle" style="margin-bottom: 20px;">・パッケージ裏の成分表<br>・料理の写真などから予測</span>
 
             <div style="display: flex; flex-direction: column; gap: 12px;">
                 <button class="m-btn" style="background: var(--th); color: #fff; padding: 15px; font-size: 16px;"
@@ -2853,9 +2910,9 @@
     <!-- ▼ UI制御用スクリプト ▼ -->
     <script>
         // ▼ UI制御用スクリプト ▼
-        let isCheatDay = false;
-        let recordOnCheatDay = false;
-        let isHighCarbMode = false;
+        let isCheatDay = localStorage.getItem('tf_cheat_day') === 'true';
+        let recordOnCheatDay = localStorage.getItem('tf_cheat_record') === 'true';
+        let isHighCarbMode = localStorage.getItem('tf_cheat_highcarb') === 'true';
 
         function openPreCheatModal() { document.getElementById('cheat-pre-modal').style.display = 'flex'; }
         function closePreCheatModal() { document.getElementById('cheat-pre-modal').style.display = 'none'; }
@@ -2870,6 +2927,7 @@
         }
         function startCheatDay(active) {
             isCheatDay = active;
+            localStorage.setItem('tf_cheat_day', active);
             if (active) {
                 document.body.classList.add('cheat-mode');
                 document.getElementById('cheat-panel').style.display = 'block';
@@ -2882,6 +2940,9 @@
 
         function cancelCheatDay() {
             isCheatDay = false;
+            localStorage.setItem('tf_cheat_day', false);
+            localStorage.setItem('tf_cheat_record', false);
+            localStorage.setItem('tf_cheat_highcarb', false);
             document.body.classList.remove('cheat-mode');
             document.getElementById('cheat-panel').style.display = 'none';
 
@@ -2900,8 +2961,22 @@
             if (typeof upd === 'function') upd();
         }
 
-        function toggleCheatRecord() {
+        document.addEventListener('DOMContentLoaded', () => {
+            if (isCheatDay) {
+                document.body.classList.add('cheat-mode');
+                document.getElementById('cheat-panel').style.display = 'block';
+
+                // 記録モードの復元とUI同期
+                document.getElementById('cheat-record-toggle').checked = recordOnCheatDay;
+                document.getElementById('high-carb-toggle').checked = isHighCarbMode;
+                toggleCheatRecord(true);
+            }
+        });
+
+        function toggleCheatRecord(skipUpd = false) {
             recordOnCheatDay = document.getElementById('cheat-record-toggle').checked;
+            localStorage.setItem('tf_cheat_record', recordOnCheatDay);
+
             const hcArea = document.getElementById('high-carb-area');
             const dashArea = document.querySelector('.dash');
             const tgtArea = document.querySelector('.tgt-sec');
@@ -2916,13 +2991,15 @@
                 if (tgtArea) tgtArea.style.display = 'none';
 
                 isHighCarbMode = false;
+                localStorage.setItem('tf_cheat_highcarb', false);
                 if (document.getElementById('high-carb-toggle')) document.getElementById('high-carb-toggle').checked = false;
-                if (typeof upd === 'function') upd();
             }
+            if (!skipUpd && typeof upd === 'function') upd();
         }
 
         function toggleHighCarb() {
             isHighCarbMode = document.getElementById('high-carb-toggle').checked;
+            localStorage.setItem('tf_cheat_highcarb', isHighCarbMode);
             if (typeof upd === 'function') upd();
         }
 

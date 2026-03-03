@@ -416,10 +416,14 @@ function drawGraph(type, btn) {
                 const t = { Cal: 0, P: 0, F: 0, C: 0, A: 0 };
                 lst.forEach(x => { t.Cal += x.Cal; t.P += x.P; t.F += x.F; t.C += x.C; t.A += (x.A || 0); }); s = t;
             }
-            data.push({ label: `${d.getDate()}日`, s: s, d: ds });
+            data.push({ label: `${d.getMonth() + 1}/${d.getDate()}`, s: s, d: ds });
         }
     } else {
-        data = hist.slice(0, 30).reverse().map(h => ({ label: h.d.split('/')[2], s: h.s, d: h.d }));
+        data = hist.slice(0, 30).reverse().map(h => {
+            const parts = h.d.split('/');
+            const labelStr = parts.length === 3 ? `${parts[1]}/${parts[2]}` : h.d;
+            return { label: labelStr, s: h.s, d: h.d };
+        });
     }
 
     if (data.length === 0) {
