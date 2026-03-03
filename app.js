@@ -733,20 +733,27 @@ function mgrGenerateBodyDummy(months) {
         baseWeight -= 0.05;
         baseFat -= 0.03;
 
+        let idx = bodyData.findIndex(x => x.date === dateStrISO);
         let obj = {
+            date: dateStrISO,
             w: baseWeight.toFixed(1),
             f: baseFat.toFixed(1),
-            m: '', // 筋肉量は未設定
-            wa: (baseWeight * 1.1).toFixed(1),
+            waist: (baseWeight * 1.1).toFixed(1),
             isDummy: true
         };
 
-        // tf_body_histは全て単一のオブジェクトに保存される(キーは日付文字列Y-M-D)
-        let savedBody = JSON.parse(localStorage.getItem('tf_body_hist')) || {};
-        savedBody[dateStrISO] = obj;
-        localStorage.setItem('tf_body_hist', JSON.stringify(savedBody));
+        if (idx >= 0) {
+            bodyData[idx] = obj;
+        } else {
+            bodyData.push(obj);
+        }
         count++;
     }
+
+    // 日付順にソートして保存
+    bodyData.sort((a, b) => new Date(a.date) - new Date(b.date));
+    localStorage.setItem('tf_body', JSON.stringify(bodyData));
+
     if (typeof showToast === 'function') showToast(`${count}日分の体組成ダミーを生成しました！`);
     if (typeof renderBodyList === 'function') renderBodyList();
     const activeBTog = document.querySelector('.b-tog-btn.act');
@@ -778,14 +785,10 @@ function mgrResetDummyData() {
     }
 
     // 2. 体組成履歴から isDummy=true を削除
-    let savedBody = JSON.parse(localStorage.getItem('tf_body_hist')) || {};
-    for (let date in savedBody) {
-        if (savedBody[date].isDummy) {
-            delete savedBody[date];
-            bodyCount++;
-        }
-    }
-    localStorage.setItem('tf_body_hist', JSON.stringify(savedBody));
+    let originalBodyLen = bodyData.length;
+    bodyData = bodyData.filter(item => !item.isDummy);
+    bodyCount = originalBodyLen - bodyData.length;
+    localStorage.setItem('tf_body', JSON.stringify(bodyData));
 
     if (typeof showToast === 'function') showToast(`食事${foodCount}件、体組成${bodyCount}件のダミー記録を削除しました。`);
     rHist();
