@@ -668,29 +668,132 @@ function mgrApplyPFC() {
     sv(); ren(); upd();
 }
 
-function mgrGenerateDummy() {
-    if (!confirm("過去7日分のダミーデータを履歴に生成しますか？\n（現在の履歴は上書きされる可能性があります）")) return;
+function mgrGenerateFoodDummy(months) {
+    if (!confirm(`過去${months}ヶ月分の食事ダミーデータを生成しますか？\n（既存の履歴に追加されます）`)) return;
     const today = new Date();
-    for (let i = 1; i <= 7; i++) {
+    const days = months * 30;
+    let count = 0;
+
+    for (let i = 1; i <= days; i++) {
         let d = new Date(today);
         d.setDate(today.getDate() - i);
         let dateStr = d.toLocaleDateString();
 
+        // 既存の履歴を取得
+        let existing = localStorage.getItem('tf_hist_' + dateStr);
+        let historyLst = existing ? JSON.parse(existing) : [];
+
+        // 食事ダミーデータ (isDummy: true を付与)
         let dummyLst = [
-            { id: Date.now() + i * 10 + 1, N: "ダミー朝食", P: 20, F: 10, C: 40, A: 0, Cal: 330, U: "食", time: "朝" },
-            { id: Date.now() + i * 10 + 2, N: "ダミー昼食", P: 30, F: 15, C: 60, A: 0, Cal: 495, U: "食", time: "昼" },
-            { id: Date.now() + i * 10 + 3, N: "ダミー夕食", P: 40, F: 20, C: 50, A: 0, Cal: 540, U: "食", time: "晩" }
+            { id: Date.now() + i * 10 + 1, N: "🍞 ダミー朝食", P: 20, F: 10, C: 40, A: 0, Cal: 330, U: "食", time: "朝", isDummy: true },
+            { id: Date.now() + i * 10 + 2, N: "🍱 ダミー昼食", P: 30, F: 15, C: 60, A: 0, Cal: 495, U: "食", time: "昼", isDummy: true },
+            { id: Date.now() + i * 10 + 3, N: "🥩 ダミー夕食", P: 40, F: 20, C: 50, A: 0, Cal: 540, U: "食", time: "晩", isDummy: true }
         ];
 
-        if (i % 2 === 0 && TG.alcMode) {
-            dummyLst.push({ id: Date.now() + i * 10 + 4, N: "ダミー酒", P: 0, F: 0, C: 5, A: 20, Cal: 160, U: "杯", time: "晩" });
+        if (i % 3 === 0 && TG.alcMode) {
+            dummyLst.push({ id: Date.now() + i * 10 + 4, N: "🍺 ダミー酒", P: 0, F: 0, C: 5, A: 20, Cal: 160, U: "杯", time: "晩", isDummy: true });
         }
-        svHist(dateStr, dummyLst);
+
+        // 既存の履歴にダミーを追加
+        let combined = historyLst.concat(dummyLst);
+        svHist(dateStr, combined);
+        count++;
     }
-    if (typeof showToast === 'function') showToast("ダミーデータを生成しました！");
+    if (typeof showToast === 'function') showToast(`${count}日分の食事ダミーを生成しました！`);
     rHist();
     const activeGBtn = document.querySelector('.g-btn.act');
-    if (activeGBtn) drawGraph('week', activeGBtn);
+    if (activeGBtn) drawGraph(activeGBtn.textContent === '週間' ? 'week' : 'month', activeGBtn);
+}
+
+function mgrGenerateBodyDummy(months) {
+    if (!confirm(`過去${months}ヶ月分の体組成ダミーデータを生成しますか？\n（既存の記録に追加/上書きされます）`)) return;
+    const today = new Date();
+    const days = months * 30;
+    let count = 0;
+
+    // 体重の推移幅を設定 (例: 徐々に減っていくトレンドを追加)
+    let baseWeight = 70.0;
+    let baseFat = 22.0;
+
+    for (let i = days; i >= 1; i--) {
+        let d = new Date(today);
+        d.setDate(today.getDate() - i);
+
+        // YYYY-MM-DD local timezone format for b-date
+        let yyyy = d.getFullYear();
+        let mm = String(d.getMonth() + 1).padStart(2, '0');
+        let dd = String(d.getDate()).padStart(2, '0');
+        let dateStrISO = `${yyyy}-${mm}-${dd}`;
+
+        // ランダム変動
+        baseWeight += (Math.random() - 0.5) * 0.4;
+        baseFat += (Math.random() - 0.5) * 0.3;
+
+        // トレンド: 大体1ヶ月で1.5kg減るペース (0.05kg/day)
+        baseWeight -= 0.05;
+        baseFat -= 0.03;
+
+        let obj = {
+            w: baseWeight.toFixed(1),
+            f: baseFat.toFixed(1),
+            m: '', // 筋肉量は未設定
+            wa: (baseWeight * 1.1).toFixed(1),
+            isDummy: true
+        };
+
+        // tf_body_histは全て単一のオブジェクトに保存される(キーは日付文字列Y-M-D)
+        let savedBody = JSON.parse(localStorage.getItem('tf_body_hist')) || {};
+        savedBody[dateStrISO] = obj;
+        localStorage.setItem('tf_body_hist', JSON.stringify(savedBody));
+        count++;
+    }
+    if (typeof showToast === 'function') showToast(`${count}日分の体組成ダミーを生成しました！`);
+    if (typeof renderBodyList === 'function') renderBodyList();
+    const activeBTog = document.querySelector('.b-tog-btn.act');
+    if (activeBTog) drawBodyGraph(activeBTog.textContent.includes('A') ? 'A' : 'B', activeBTog);
+}
+
+function mgrResetDummyData() {
+    if (!confirm("すべてのダミーデータ（食事・体組成）を削除しますか？\n（ご自身で記録したデータは残ります）")) return;
+    let foodCount = 0;
+    let bodyCount = 0;
+
+    // 1. 食事履歴から isDummy=true を削除
+    for (let i = 0; i < localStorage.length; i++) {
+        let key = localStorage.key(i);
+        if (key && key.startsWith('tf_hist_')) {
+            let hist = JSON.parse(localStorage.getItem(key)) || [];
+            let originalLen = hist.length;
+            hist = hist.filter(item => !item.isDummy);
+
+            if (hist.length < originalLen) {
+                foodCount += (originalLen - hist.length);
+                if (hist.length === 0) {
+                    localStorage.removeItem(key); // 空になったらキーごと削除
+                } else {
+                    localStorage.setItem(key, JSON.stringify(hist));
+                }
+            }
+        }
+    }
+
+    // 2. 体組成履歴から isDummy=true を削除
+    let savedBody = JSON.parse(localStorage.getItem('tf_body_hist')) || {};
+    for (let date in savedBody) {
+        if (savedBody[date].isDummy) {
+            delete savedBody[date];
+            bodyCount++;
+        }
+    }
+    localStorage.setItem('tf_body_hist', JSON.stringify(savedBody));
+
+    if (typeof showToast === 'function') showToast(`食事${foodCount}件、体組成${bodyCount}件のダミー記録を削除しました。`);
+    rHist();
+    if (typeof renderBodyList === 'function') renderBodyList();
+    const activeGBtn = document.querySelector('.g-btn.act');
+    if (activeGBtn) drawGraph(activeGBtn.textContent === '週間' ? 'week' : 'month', activeGBtn);
+    const activeBTog = document.querySelector('.b-tog-btn.act');
+    if (activeBTog) drawBodyGraph(activeBTog.textContent.includes('A') ? 'A' : 'B', activeBTog);
 }
 
 function mgrHardReset() {
