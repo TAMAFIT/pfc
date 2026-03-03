@@ -2258,7 +2258,9 @@
                     onchange="handleCameraChoice(event)">
                 <input type="file" accept="image/*" id="camera-library-input" style="display:none;"
                     onchange="handleCameraChoice(event)">
-                <input type="file" accept="image/*" id="body-photo-input" style="display:none;"
+                <input type="file" accept="image/*" capture="environment" id="body-photo-take-input"
+                    style="display:none;" onchange="handleBodyPhotoSelect(event)">
+                <input type="file" accept="image/*" id="body-photo-lib-input" style="display:none;"
                     onchange="handleBodyPhotoSelect(event)">
             </div>
 
@@ -2817,16 +2819,22 @@
             <!-- アクションボタン -->
             <div id="body-photo-actions-init" style="display:flex; flex-direction:column; gap:10px;">
                 <button class="m-btn" style="background:var(--primary); color:#fff;"
-                    onclick="document.getElementById('body-photo-input').click()">写真を選ぶ / 撮る</button>
+                    onclick="document.getElementById('body-photo-take-input').click()">📷 カメラを起動する</button>
+                <button class="m-btn" style="background:#f0f0f0; color:#333;"
+                    onclick="document.getElementById('body-photo-lib-input').click()">🖼 ライブラリから選ぶ</button>
                 <button class="m-btn m-cancel" onclick="closeBodyPhotoModal()">キャンセル</button>
             </div>
 
             <div id="body-photo-actions-ready" style="display:none; flex-direction:column; gap:10px;">
                 <button class="m-btn"
-                    style="background: linear-gradient(135deg, #FFB600 0%, #FF8A00 100%); color:#fff; font-weight:bold; box-shadow:0 4px 10px rgba(255,182,0,0.3);"
-                    onclick="generateAndShareBodyCard()">✨ カードを作成して保存</button>
-                <button class="m-btn m-cancel"
-                    onclick="document.getElementById('body-photo-input').click()">写真を選び直す</button>
+                    style="background: var(--primary); color:#fff; font-weight:bold; box-shadow:0 4px 10px rgba(52,152,219,0.3);"
+                    onclick="generateAndShareBodyCard()">✨ カードを作成する</button>
+                <div style="display:flex; gap:10px;">
+                    <button class="m-btn m-cancel" style="flex:1;"
+                        onclick="document.getElementById('body-photo-take-input').click()">撮り直す</button>
+                    <button class="m-btn m-cancel" style="flex:1;"
+                        onclick="document.getElementById('body-photo-lib-input').click()">選び直す</button>
+                </div>
                 <button class="m-btn m-cancel"
                     style="background:none; border:none; color:#999; text-decoration:underline;"
                     onclick="closeBodyPhotoModal()">やめる</button>
@@ -2835,6 +2843,18 @@
             <div id="body-photo-loading"
                 style="display:none; margin-top: 15px; color: var(--primary); font-weight: bold;">
                 カードを生成中... ⏳
+            </div>
+
+            <!-- 完成画像表示エリア (長押し保存用) -->
+            <div id="body-photo-result-area" style="display:none; flex-direction:column; align-items:center; gap:15px;">
+                <div
+                    style="font-size:14px; color:var(--primary); font-weight:bold; background:#e8f4fd; padding:10px; border-radius:8px; border:1px solid #bce0fd;">
+                    👇 画像を長押しして「写真に追加」や「画像を保存」で保存できます
+                </div>
+                <img id="body-photo-result-img"
+                    style="max-width: 100%; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                <button class="m-btn" style="background:var(--primary); color:#fff;"
+                    onclick="closeBodyPhotoModal()">閉じる</button>
             </div>
         </div>
     </div>
@@ -3140,6 +3160,10 @@
             document.getElementById('body-photo-actions-ready').style.display = 'none';
             document.getElementById('body-photo-loading').style.display = 'none';
 
+            document.getElementById('body-photo-loading').style.display = 'none';
+            document.getElementById('body-photo-result-area').style.display = 'none';
+            document.getElementById('body-photo-result-img').src = '';
+
             // 入力欄をクリア (直近のデータを自動入力しても良いが、今回はシンプルにクリア)
             document.getElementById('bp-weight').value = '';
             document.getElementById('bp-fat').value = '';
@@ -3150,7 +3174,8 @@
                 URL.revokeObjectURL(selectedBodyPhotoObjUrl);
                 selectedBodyPhotoObjUrl = null;
             }
-            document.getElementById('body-photo-input').value = '';
+            document.getElementById('body-photo-take-input').value = '';
+            document.getElementById('body-photo-lib-input').value = '';
         }
 
         function closeBodyPhotoModal() {
@@ -3209,15 +3234,12 @@
                 canvas.width = cardWidth;
                 canvas.height = cardHeight;
 
-                // --- 背景描画 (プレミアムなダークゴールド系) ---
-                const grd = ctx.createLinearGradient(0, 0, cardWidth, cardHeight);
-                grd.addColorStop(0, '#1a1a1a');
-                grd.addColorStop(1, '#0a0a0a');
-                ctx.fillStyle = grd;
+                // --- 背景描画 (通常デザイン: 白背景) ---
+                ctx.fillStyle = '#ffffff';
                 ctx.fillRect(0, 0, cardWidth, cardHeight);
 
                 // --- ヘッダー描画 ---
-                ctx.fillStyle = '#d4af37'; // ゴールド
+                ctx.fillStyle = '#3498db'; // メインカラー
                 ctx.font = 'bold 36px sans-serif';
                 ctx.textAlign = 'left';
                 ctx.fillText('TamaFit Body Record', 40, 65);
@@ -3225,7 +3247,7 @@
                 // 日付
                 const today = new Date();
                 const dateStr = `${today.getFullYear()}.${today.getMonth() + 1}.${today.getDate()}`;
-                ctx.fillStyle = '#aaaaaa';
+                ctx.fillStyle = '#7f8c8d'; // グレー
                 ctx.font = 'bold 28px sans-serif';
                 ctx.textAlign = 'right';
                 ctx.fillText(dateStr, cardWidth - 40, 65);
@@ -3249,8 +3271,8 @@
 
                 ctx.drawImage(img, sx, sy, sWidth, sHeight, 0, 100, cardWidth, drawHeight);
 
-                // 写真とフッターの境界線にゴールドのライン
-                ctx.fillStyle = '#d4af37';
+                // 写真とフッターの境界線にメインカラーのライン
+                ctx.fillStyle = '#3498db';
                 ctx.fillRect(0, 100 + drawHeight, cardWidth, 4);
 
                 // --- フッター(データエリア)描画 ---
@@ -3265,20 +3287,20 @@
 
                 // グリッド状にデータを配置
                 const drawDataPoint = (label, val, unit, x, y) => {
-                    ctx.fillStyle = '#888888';
+                    ctx.fillStyle = '#7f8c8d';
                     ctx.font = '22px sans-serif';
                     ctx.fillText(label, x, y);
 
                     if (val) {
-                        ctx.fillStyle = '#ffffff';
+                        ctx.fillStyle = '#2c3e50'; // 濃いグレー
                         ctx.font = 'bold 42px sans-serif';
                         ctx.fillText(val, x - 15, y + 45); // 値
 
-                        ctx.fillStyle = '#d4af37';
+                        ctx.fillStyle = '#3498db';
                         ctx.font = 'bold 20px sans-serif';
                         ctx.fillText(unit, x + (ctx.measureText(val).width / 2) + 10, y + 45); // 単位
                     } else {
-                        ctx.fillStyle = '#444444';
+                        ctx.fillStyle = '#bdc3c7';
                         ctx.font = 'bold 42px sans-serif';
                         ctx.fillText('--', x, y + 45);
                     }
@@ -3293,52 +3315,20 @@
                 drawDataPoint('WAIST', waInput, 'cm', qWidth * 3.5, dataY);
 
                 // アプリロゴ的なウォーターマーク
-                ctx.fillStyle = 'rgba(212, 175, 55, 0.3)';
+                ctx.fillStyle = 'rgba(52, 152, 219, 0.2)';
                 ctx.font = 'italic bold 24px sans-serif';
                 ctx.textAlign = 'right';
                 ctx.fillText('Generated by TamaFit', cardWidth - 30, cardHeight - 30);
 
-                // --- 画像化してシェア ---
-                canvas.toBlob(async (blob) => {
-                    if (!blob) throw new Error('Canvas to Blob failed');
+                // --- 画像化して表示 (長押し保存用) ---
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
 
-                    const fileName = `tamafit-body-${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}.png`;
-                    const file = new File([blob], fileName, { type: 'image/png' });
+                document.getElementById('body-photo-preview-area').style.display = 'none';
+                document.getElementById('body-photo-loading').style.display = 'none';
 
-                    // Web Share API を試行
-                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                        try {
-                            await navigator.share({
-                                files: [file],
-                                title: 'TamaFit Body Record',
-                                text: '本日の体型記録です！'
-                            });
-                            closeBodyPhotoModal();
-                            return; // 成功したら終了
-                        } catch (shareError) {
-                            console.log('Share canceled or failed:', shareError);
-                            // キャンセル時は何もしないかフォールバックへ
-                        }
-                    }
-
-                    // シェア非対応 or 失敗時はダウンロード(フォールバック)
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = fileName;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-
-                    closeBodyPhotoModal();
-
-                    if (typeof showToast === 'function') {
-                        showToast('カード画像をダウンロードしました！');
-                    } else {
-                        alert('カード画像をダウンロードしました！');
-                    }
-                }, 'image/png', 0.95);
+                const resultArea = document.getElementById('body-photo-result-area');
+                document.getElementById('body-photo-result-img').src = dataUrl;
+                resultArea.style.display = 'flex';
 
             } catch (error) {
                 console.error('Card generation error:', error);
