@@ -37,6 +37,17 @@ window.onload = () => {
         localStorage.setItem('tf_dat', JSON.stringify(lst));
         if (typeof showToast === 'function') showToast(`📅 日付が変わったため、昨日（${lastDateStr}）の記録を自動保存してリセットしたたま！`);
     }
+
+    // 【改善3】日付が変わっていれば、チートデイやハイカーボモードを強制的に解除
+    if (lastDateStr !== todayStr) {
+        if (typeof cancelCheatDaySilent === 'function') {
+            cancelCheatDaySilent();
+        } else if (TG.isCheatDay) {
+            TG.isCheatDay = false; TG.highCarbMode = false; TG.recordOnCheatDay = true;
+            localStorage.setItem('tf_tg', JSON.stringify(TG));
+        }
+    }
+
     localStorage.setItem('tf_last_date', todayStr);
 
     const d = new Date(); const today = `${d.getFullYear()}-${("0" + (d.getMonth() + 1)).slice(-2)}-${("0" + d.getDate()).slice(-2)}`;
@@ -165,7 +176,22 @@ function selFd(i) {
     const bx = document.createElement('div'); bx.className = 'dir-inp'; const unitLabel = d[3].includes('g') ? 'g' : (d[3].includes('杯') ? '杯' : '個/他');
     bx.innerHTML = `<input type="text" inputmode="decimal" placeholder="手入力" oninput="updBd(this.value)"><span class="unit-label">${unitLabel}</span>`; p.appendChild(bx);
     document.getElementById('m-time').value = getAutoTime();
-    updBd(1); setTimeout(() => document.getElementById('amt-area').scrollIntoView({ behavior: 'smooth' }), 100);
+
+    // 【改善1】自動的によく使う量を初期選択状態にする
+    let autoVal = 1;
+    if (d[1].includes("白米") || d[1].includes("玄米") || d[1].includes("オート")) { autoVal = 150; } // ご飯類は普通盛り
+    else if (d[3].includes('g')) { autoVal = 100; } // グラム単位は100g
+    updBd(autoVal); // 初期値をセット
+
+    // 該当するボタンに'sel'クラスを付与
+    setTimeout(() => {
+        document.querySelectorAll('.a-btn').forEach(btn => {
+            if (btn.querySelector('span:not(.sub-label)').textContent.startsWith(String(autoVal))) {
+                btn.classList.add('sel');
+            }
+        });
+        document.getElementById('amt-area').scrollIntoView({ behavior: 'smooth' });
+    }, 100);
 }
 
 function selMyFd(i) {
@@ -493,6 +519,12 @@ function drawGraph(type, btn) {
         const grp = document.createElement('div'); grp.className = 'bar-grp';
         const col = document.createElement('div'); col.className = 'bar-col';
         col.style.height = h + '%';
+
+        // 【改善4】脂質が日標を超えている日は枠を赤くして警告（アラート）
+        if (d.s.F > TG.f) {
+            col.style.border = '2px solid #e74c3c';
+            col.style.boxShadow = '0 0 8px rgba(231,76,60,0.5)';
+        }
         // 順番に生えるようなディレイを設定
         col.style.animationDelay = `${idx * 0.05}s`;
 
@@ -577,8 +609,14 @@ function drawBodyGraph(mode, btn) {
         let pts = "";
         let areaPts = ""; // 面チャート用の座標
         const vals = dataPoints.map(d => { let v = 0; if (ds.key === 'w') v = d.w; else if (ds.key === 'f') v = d.f; else if (ds.key === 'waist') v = d.waist; else if (ds.key === 'fm') v = (d.w && d.f) ? (d.w * d.f / 100) : 0; else if (ds.key === 'lbm') v = (d.w && d.f) ? (d.w - (d.w * d.f / 100)) : 0; return Number(v) || 0; });
-        const max = Math.max(...vals) || 100; const min = Math.min(...vals.filter(v => v > 0)) || 0; const range = max - min || 1; const current = vals[vals.length - 1] || 0;
-        if (Math.max(...vals) > 0) { legend.innerHTML += `<div class="bl-item"><div class="bl-dot" style="background:${ds.color}"></div><span>${ds.label}: ${current.toFixed(1)}${ds.unit} <span style="color:#999;font-size:9px;">(${min.toFixed(0)}~${max.toFixed(0)})</span></span></div>`; }
+        const max = Math.max(...vals) || 100;
+
+        // 【改善5】最小値ぴったりだとグラフの底辺に張り付くため、少しだけパディング(余裕)を持たせる
+        let rawMin = Math.min(...vals.filter(v => v > 0)) || 0;
+        let min = rawMin > 0 ? (rawMin * 0.98) : 0; // 約2%の余裕を持たせる
+
+        const range = max - min || 1; const current = vals[vals.length - 1] || 0;
+        if (Math.max(...vals) > 0) { legend.innerHTML += `<div class="bl-item"><div class="bl-dot" style="background:${ds.color}"></div><span>${ds.label}: ${current.toFixed(1)}${ds.unit} <span style="color:#999;font-size:9px;">(${rawMin.toFixed(1)}~${max.toFixed(1)})</span></span></div>`; }
 
         let firstX = -1, lastX = -1;
 
