@@ -1,0 +1,174 @@
+/* --- デザイン・UI要件 (Source: デザインガイドライン) [cite: 55, 58] --- */
+:root {
+    --primary: #ff1a7d;       /* Neon Pink */
+    --primary-glow: rgba(255, 26, 125, 0.5);
+    --bg-base: #121212;       /* Obsidian */
+    --bg-surface: #1e1e1e;
+    --text-main: #FFFFFF;     /* 見出し */
+    --text-body: #E0E0E0;     /* 目に優しいグレー [cite: 59, 83] */
+    --text-muted: #A0A0A0;
+    --accent: #ffb400;        /* Gold */
+    --font-main: 'Noto Sans JP', sans-serif;
+    --font-accent: 'Oswald', sans-serif;
+    --radius: 24px;
+    --transition-bounce: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017, 1.077, 1.121, 1.149 24.3%, 1.159, 1.163, 1.161, 1.154 29.9%, 1.129 32.8%, 1.051 39.6%, 1.017 43.1%, 0.991, 0.977 51%, 0.974 53.8%, 0.975 57.1%, 0.997 69.8%, 1.003 76.9%, 1.004 83.8%, 1); /* [cite: 132, 159] */
+}
+
+/* --- ベース設定 --- */
+body {
+    background-color: var(--bg-base);
+    color: var(--text-body);
+    font-family: var(--font-main);
+    margin: 0; line-height: 1.9; /* 高級感のための広い行間 [cite: 63, 88] */
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* 美しい日本語改行 [cite: 66, 90] */
+h1, h2, h3 {
+    color: var(--text-main);
+    word-break: auto-phrase;
+    text-wrap: balance;
+    font-weight: 900;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+/* --- ヒーローセクション (Deep Glass & 100svh) [cite: 42, 48] --- */
+.hero {
+    position: relative;
+    height: 100svh; /* スマホUIバーの影響を排除 [cite: 48, 72] */
+    width: 100%;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+}
+
+.hero-img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    z-index: 0;
+    aspect-ratio: 16/9; /* レイアウトシフト防止 [cite: 118] */
+}
+
+/* ファントム・グラデーション [cite: 51, 75] */
+.hero-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(to right, rgba(18, 18, 18, 0.9) 0%, rgba(18, 18, 18, 0.2) 100%);
+    z-index: 1;
+}
+
+.hero-content {
+    position: relative; z-index: 2;
+    padding-top: 80px;
+}
+
+.hero-title {
+    font-size: clamp(40px, 8vw, 80px); /* 流動的タイポグラフィ [cite: 140, 155] */
+    line-height: 1.1; margin: 0 0 24px;
+}
+
+.hero-badges {
+    display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 32px;
+}
+
+.badge {
+    background: rgba(255, 26, 125, 0.15);
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    padding: 6px 16px; border-radius: 8px;
+    font-size: 14px; font-weight: 700;
+}
+
+/* --- Bento Grid (PC用) [cite: 36, 79] --- */
+.bento-container {
+    display: grid;
+    gap: 24px;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 350px), 1fr)); /* [cite: 121, 143] */
+}
+
+@media (min-width: 1024px) {
+    .bento-container {
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: auto;
+    }
+    .card-large { grid-column: span 2; }
+}
+
+/* Deep Glass (進化したグラスモーフィズム) [cite: 43, 80] --- */
+.card-glass {
+    background: rgba(30, 30, 30, 0.6);
+    backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius);
+    padding: 40px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* --- 脱JSアニメーション (linear easing) [cite: 132, 159] --- */
+.btn-main {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--primary) 0%, #d9005e 100%);
+    color: #fff; text-decoration: none;
+    padding: 20px 48px; border-radius: 100px;
+    font-weight: 900; font-size: 20px;
+    box-shadow: 0 10px 30px var(--primary-glow);
+    transition: transform 0.6s var(--transition-bounce); /* [cite: 133] */
+}
+
+.btn-main:hover {
+    transform: scale(1.05) translateY(-5px);
+}
+
+/* --- 高速レンダリング (content-visibility) [cite: 120, 146] --- */
+.content-visibility-auto {
+    content-visibility: auto;
+    contain-intrinsic-size: 1px 1000px; /* 推定高さでCLS防止 [cite: 120, 154] */
+}
+
+/* --- スティッキーフッター (Thumb Zone) [cite: 16, 53] --- */
+.sticky-footer {
+    position: fixed; bottom: 0; left: 0; width: 100%;
+    display: flex; z-index: 1000;
+    padding: 12px; gap: 8px;
+    background: rgba(18, 18, 18, 0.85);
+    backdrop-filter: blur(15px);
+    box-sizing: border-box;
+}
+
+.footer-btn {
+    flex: 1; text-decoration: none; text-align: center;
+    padding: 12px 8px; border-radius: 16px;
+    font-weight: 900; line-height: 1.2;
+}
+
+.footer-btn span { font-size: 11px; font-weight: 400; opacity: 0.8; }
+
+.btn-line { background: #06C755; color: #fff; }
+.btn-primary { 
+    background: var(--primary); color: #fff;
+    box-shadow: 0 0 20px var(--primary-glow);
+}
+
+/* :has() セレクタを用いたインタラクション (JS不要) [cite: 137, 145] */
+.bento-container:has(.card-glass:hover) .card-glass:not(:hover) {
+    opacity: 0.6; scale: 0.98;
+    transition: all 0.4s ease;
+}
+
+/* --- アクセスエリア --- */
+.access-wrapper {
+    display: flex; flex-wrap: wrap; gap: 48px;
+}
+
+.access-info, .map-box { flex: 1 1 450px; }
+
+.map-box iframe {
+    width: 100%; border-radius: var(--radius);
+    filter: invert(90%) hue-rotate(180deg); /* ダークモードに馴染ませる */
+}

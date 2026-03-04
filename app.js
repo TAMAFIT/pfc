@@ -283,7 +283,7 @@ function svHist(d, l) {
     localStorage.setItem('tf_hist', JSON.stringify(hist));
 }
 
- }
+function togHist() { const a = document.getElementById('hist-area'); if (a.style.display === 'block') a.style.display = 'none'; else { a.style.display = 'block'; rHist(); } }
 
 function rHist() {
     const d = document.getElementById('h-list'); if (!d) return; d.innerHTML = ""; if (!hist.length) d.innerHTML = "<p style='text-align:center'>履歴なし</p>";
