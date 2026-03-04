@@ -419,10 +419,40 @@ function drawGraph(type, btn) {
             data.push({ label: `${d.getMonth() + 1}/${d.getDate()}`, s: s, d: ds });
         }
     } else {
-        data = hist.slice(0, 30).reverse().map(h => {
-            const parts = h.d.split('/');
-            const labelStr = parts.length === 3 ? `${parts[1]}/${parts[2]}` : h.d;
-            return { label: labelStr, s: h.s, d: h.d };
+        const monthGroups = {};
+        hist.forEach(h => {
+            let dObj = new Date(h.d.replace(/\//g, '-'));
+            if (isNaN(dObj.getTime())) {
+                const parts = h.d.split('/');
+                if (parts.length === 3) dObj = new Date(parts[0], parts[1] - 1, parts[2]);
+                else return;
+            }
+            const mKey = `${dObj.getFullYear()}/${dObj.getMonth() + 1}`;
+            if (!monthGroups[mKey]) monthGroups[mKey] = { count: 0, sum: { Cal: 0, P: 0, F: 0, C: 0, A: 0 }, dObj: dObj };
+            monthGroups[mKey].count++;
+            monthGroups[mKey].sum.Cal += h.s.Cal || 0;
+            monthGroups[mKey].sum.P += h.s.P || 0;
+            monthGroups[mKey].sum.F += h.s.F || 0;
+            monthGroups[mKey].sum.C += h.s.C || 0;
+            monthGroups[mKey].sum.A += h.s.A || 0;
+        });
+
+        const sortedMonths = Object.keys(monthGroups).sort((a, b) => {
+            const [yA, mA] = a.split('/').map(Number);
+            const [yB, mB] = b.split('/').map(Number);
+            return yA !== yB ? yA - yB : mA - mB;
+        });
+
+        data = sortedMonths.slice(-12).map(mKey => {
+            const g = monthGroups[mKey];
+            const avg = {
+                Cal: Math.round(g.sum.Cal / g.count),
+                P: g.sum.P / g.count,
+                F: g.sum.F / g.count,
+                C: g.sum.C / g.count,
+                A: g.sum.A / g.count
+            };
+            return { label: `${g.dObj.getMonth() + 1}月`, s: avg, d: mKey };
         });
     }
 
