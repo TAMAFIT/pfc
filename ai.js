@@ -137,9 +137,14 @@ function setupChatEnterKey() {
 
 function addChatMsg(role, text, isHTML = false) {
     const id = 'msg-' + Date.now();
-    const createMsgNode = () => {
-        const div = document.createElement('div'); div.className = `msg ${role}`; div.id = id;
-        const iconDiv = document.createElement('div'); iconDiv.className = 'icon'; iconDiv.innerHTML = '<img src="new_tama.png">';
+    const createMsgNode = (isVoiceBox = false) => {
+        const div = document.createElement('div'); div.className = `msg ${role}`;
+        const iconDiv = document.createElement('div'); iconDiv.className = 'icon';
+        if (role === 'bot' && isVoiceBox) {
+            iconDiv.innerHTML = '<div style="background:#dee2e6; color:#495057; border-radius:50%; width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:22px;">🤖</div>';
+        } else {
+            iconDiv.innerHTML = '<img src="new_tama.png">';
+        }
         const textDiv = document.createElement('div'); textDiv.className = 'text';
         if (isHTML) textDiv.innerHTML = text; else textDiv.innerHTML = escapeHTML(text).replace(/\n/g, '<br>');
         if (role === 'bot') { div.appendChild(iconDiv); div.appendChild(textDiv); } else { div.appendChild(textDiv); div.appendChild(iconDiv); }
@@ -147,11 +152,16 @@ function addChatMsg(role, text, isHTML = false) {
     };
 
     const box1 = document.getElementById('chat-messages');
-    if (box1) { box1.appendChild(createMsgNode()); box1.scrollTop = box1.scrollHeight; }
+    if (box1) {
+        const node1 = createMsgNode(false);
+        node1.id = id;
+        box1.appendChild(node1);
+        box1.scrollTop = box1.scrollHeight;
+    }
 
     const box2 = document.getElementById('v-chat-messages');
     if (box2) {
-        const node2 = createMsgNode();
+        const node2 = createMsgNode(true);
         node2.id = id + '-v';
         box2.appendChild(node2);
         box2.scrollTop = box2.scrollHeight;
@@ -220,7 +230,15 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
         if (matchedFoods.length > 0) cheatSheetText = `\n【カンペ(公式データ)】\n${matchedFoods.slice(0, 5).join('\n')}\n`;
     }
 
-    const prompt = `${typeof SYSTEM_PROMPT !== 'undefined' ? SYSTEM_PROMPT : 'あなたは「たまちゃん」です。'}\n=== 現在の状況 ===\n${context}\n=== 会話履歴 ===\n${historyText}\n${cheatSheetText}\n${userPrefText}\n=== ユーザーの発言 ===\n${text}\n\n【絶対ルール】\n・システムログ、AIとしての思考プロセス、プロンプトの解説は一切出力しないでください。\n・「たまちゃん」としての純粋なセリフと、必要なシステムコマンド（[DATA]など）のみを簡潔に出力してください。`;
+    let basePrompt = typeof SYSTEM_PROMPT !== 'undefined' ? SYSTEM_PROMPT : 'あなたは「たまちゃん」です。';
+    let voiceRule = '・「たまちゃん」としての純粋なセリフと、必要なシステムコマンド（[DATA]など）のみを簡潔に出力してください。';
+
+    if (isVoiceMode) {
+        basePrompt = 'あなたは無機質で端的な報告用AIアシスタントです。感情を持たず、事実とシステムコマンドのみを極めて短く回答してください。「たまちゃん」としての振る舞いや、語尾に「だたま」などを付与することは絶対に避けてください。';
+        voiceRule = '・感情的なセリフは一切不要です。無機質に「〇〇を登録しました。」等のごく短い事実の報告文と、必要なシステムコマンド（[DATA]など）のみを出力してください。\n・「うどん」など、ユーザーから分量の指定がなく1人前などの分量を推定して登録した場合は、報告文の最後に必ず「※分量が想定と違う場合は教えてください。」と添えてください。';
+    }
+
+    const prompt = `${basePrompt}\n=== 現在の状況 ===\n${context}\n=== 会話履歴 ===\n${historyText}\n${cheatSheetText}\n${userPrefText}\n=== ユーザーの発言 ===\n${text}\n\n【絶対ルール】\n・システムログ、AIとしての思考プロセス、プロンプトの解説は一切出力しないでください。\n${voiceRule}`;
 
     chatHistory.push({ role: 'user', text: text });
     if (chatHistory.length > 6) chatHistory.shift();

@@ -2326,3 +2326,35 @@
                     font-weight: bold;
                 }
 
+/* ▼▼▼ マイクボタンON/OFF切替スタイル ▼▼▼ */
+/* -------------------------------------- */
+/* 通常時（OFF状態）: グレーベースで待機状態を明示 */
+#mic-btn {
+    transition: all 0.3s ease;
+}
+
+.v-mic-btn {
+    background: #bdc3c7 !important; /* 初期・OFF時はグレー */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1) !important;
+    transition: all 0.3s ease;
+}
+
+/* 録音中（ON状態）: 赤色＋パルスアニメーション */
+#mic-btn.recording,
+.v-mic-btn.listening {
+    background: #e74c3c !important; /* 録音時は目立つ赤色 */
+    color: white !important;
+    animation: mic-pulse 1.5s infinite !important;
+}
+
+@keyframes mic-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 15px rgba(231, 76, 60, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(231, 76, 60, 0);
+    }
+}
