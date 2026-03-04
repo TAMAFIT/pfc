@@ -874,3 +874,34 @@ function mgrHardReset() {
     alert("全データを初期化しました。再読み込みします。");
     location.reload();
 }
+
+async function forceAppUpdate() {
+    if (confirm("最新バージョンに更新しますか？\n（入力済みのデータは消えません）")) {
+        // Service Workerの解除
+        if ('serviceWorker' in navigator) {
+            try {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                for (let registration of registrations) {
+                    await registration.unregister();
+                }
+            } catch (e) {
+                console.error('SW unregistration failed:', e);
+            }
+        }
+
+        // Cache APIの全クリア (Workbox/PWAのキャッシュを持つ場合)
+        if ('caches' in window) {
+            try {
+                const cacheNames = await caches.keys();
+                await Promise.all(cacheNames.map(name => caches.delete(name)));
+            } catch (e) {
+                console.error('Cache deletion failed:', e);
+            }
+        }
+
+        // 確実なリロードのためにクエリパラメータを付与してリダイレクト
+        const url = new URL(window.location.href);
+        url.searchParams.set('reload', new Date().getTime());
+        window.location.href = url.href;
+    }
+}
