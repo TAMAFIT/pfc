@@ -100,6 +100,16 @@ function startRecognition(onStartCallback, onResultCallback) {
 }
 
 // ▼▼▼ チャット表示制御 ▼▼▼
+function escapeHTML(str) {
+    if (!str) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 function toggleChat() {
     const win = document.getElementById('tama-chat-window');
     const btn = document.getElementById('tama-chat-btn');
@@ -125,12 +135,13 @@ function setupChatEnterKey() {
     });
 }
 
-function addChatMsg(role, text) {
+function addChatMsg(role, text, isHTML = false) {
     const id = 'msg-' + Date.now();
     const createMsgNode = () => {
         const div = document.createElement('div'); div.className = `msg ${role}`; div.id = id;
         const iconDiv = document.createElement('div'); iconDiv.className = 'icon'; iconDiv.innerHTML = '<img src="new_tama.png">';
-        const textDiv = document.createElement('div'); textDiv.className = 'text'; textDiv.innerHTML = text;
+        const textDiv = document.createElement('div'); textDiv.className = 'text';
+        if (isHTML) textDiv.innerHTML = text; else textDiv.innerHTML = escapeHTML(text).replace(/\n/g, '<br>');
         if (role === 'bot') { div.appendChild(iconDiv); div.appendChild(textDiv); } else { div.appendChild(textDiv); div.appendChild(iconDiv); }
         return div;
     };
@@ -242,20 +253,48 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
         const delMatches = [...botReply.matchAll(/\[DELETE\]\s*(\d+)/g)];
         delMatches.forEach(m => { deleteIds.push(parseInt(m[1], 10)); botReply = botReply.replace(m[0], ""); });
 
-        // ★改善箇所：[DATA]の複数抽出＆JS側での掛け算処理
+        // ★改善箇所：[DATA]の複数抽出＆JS側での掛け算処理 (料理名にカンマが含まれても安全に分割)
         // フォーマット: [DATA] 時間帯 | 食品名, 基準P, 基準F, 基準C, 基準A, 倍率
         const dataMatches = [...botReply.matchAll(/\[DATA\]\s*([^|]+)\|(.+)/g)];
         dataMatches.forEach(m => {
             let tZone = m[1].trim();
-            let d = m[2].split(/,|、/);
-            if (d.length >= 4) {
-                let name = d[0].trim();
-                let pBase = parseFloat(d[1].replace(/[^\d.]/g, "")) || 0;
-                let fBase = parseFloat(d[2].replace(/[^\d.]/g, "")) || 0;
-                let cBase = parseFloat(d[3].replace(/[^\d.]/g, "")) || 0;
-                let aBase = d.length >= 5 ? (parseFloat(d[4].replace(/[^\d.]/g, "")) || 0) : 0;
-                // 倍率（第6引数）があれば掛け算、なければ1倍
-                let mul = d.length >= 6 ? (parseFloat(d[5].replace(/[^\d.]/g, "")) || 1) : 1;
+            let dRaw = m[2];
+            // 後方からカンマで分割して数値を取得する (最低4つ＝P,F,C,カロリーの順、または倍率など）
+            let parts = dRaw.split(/,|、/).map(p => p.trim());
+            // 数値部分（後ろから最大5個）を探す
+            let numParts = [];
+            while (parts.length > 0) {
+                let lastPart = parts[parts.length - 1];
+                let val = parseFloat(lastPart.replace(/[^\d.]/g, ""));
+                // 空文字でもNaNでもない有効な数値とみなせるか（10gなどの単位付きも考慮）
+                if (!isNaN(val) && /[0-9]/.test(lastPart)) {
+                    numParts.unshift(val);
+                    parts.pop();
+                } else {
+                    break;
+                }
+            }
+
+            // numPartsに少なくとも3つ（P,F,C）が含まれていればOK
+            if (numParts.length >= 3) {
+                // 名前部分は残ったpartsを全て結合して復元
+                let name = parts.join(",").replace(/^["']|["']$/g, "").trim();
+                if (!name) name = "不明な食事";
+
+                // P, F, C, [A], [倍率]
+                let pBase = numParts[0] || 0;
+                let fBase = numParts[1] || 0;
+                let cBase = numParts[2] || 0;
+                let aBase = numParts.length >= 4 ? numParts[3] : 0;
+                let mul = numParts.length >= 5 ? numParts[4] : (numParts.length === 4 && numParts[3] < 10 ? numParts[3] : 1);
+                // Aがないパターンの倍率考慮を簡易に (Aが10以上ならgと推測、小さければ倍率と推測等もできるが、基本は5つ揃うか、A=0とするか)
+                if (numParts.length === 4) {
+                    // もし4つ目で、値が10未満なら倍率（mul）として扱い、A=0とする（AIの出力ブレを吸収）
+                    if (numParts[3] <= 5 && !dRaw.includes('A')) {
+                        mul = numParts[3];
+                        aBase = 0;
+                    }
+                }
 
                 let p = pBase * mul; let f = fBase * mul; let c = cBase * mul; let a = aBase * mul;
                 let cal = Math.round(p * 4 + f * 9 + c * 4 + a * 7);
@@ -264,19 +303,29 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
             botReply = botReply.replace(m[0], "");
         });
 
-        // ★改善箇所：[REPLACE]の複数抽出＆JS側での掛け算処理
+        // ★改善箇所：[REPLACE]の複数抽出＆JS側でのカンマ対策
         const repMatches = [...botReply.matchAll(/\[REPLACE\]\s*(\d+)\s*\|\s*([^|]+)\|(.+)/g)];
         repMatches.forEach(m => {
             let id = parseInt(m[1], 10);
             let tZone = m[2].trim();
-            let d = m[3].split(/,|、/);
-            if (d.length >= 4) {
-                let name = d[0].trim();
-                let pBase = parseFloat(d[1].replace(/[^\d.]/g, "")) || 0;
-                let fBase = parseFloat(d[2].replace(/[^\d.]/g, "")) || 0;
-                let cBase = parseFloat(d[3].replace(/[^\d.]/g, "")) || 0;
-                let aBase = d.length >= 5 ? (parseFloat(d[4].replace(/[^\d.]/g, "")) || 0) : 0;
-                let mul = d.length >= 6 ? (parseFloat(d[5].replace(/[^\d.]/g, "")) || 1) : 1;
+            let dRaw = m[3];
+            let parts = dRaw.split(/,|、/).map(p => p.trim());
+            let numParts = [];
+            while (parts.length > 0) {
+                let lastPart = parts[parts.length - 1];
+                let val = parseFloat(lastPart.replace(/[^\d.]/g, ""));
+                if (!isNaN(val) && /[0-9]/.test(lastPart)) { numParts.unshift(val); parts.pop(); } else { break; }
+            }
+
+            if (numParts.length >= 3) {
+                let name = parts.join(",").replace(/^["']|["']$/g, "").trim();
+                if (!name) name = "不明な食事";
+                let pBase = numParts[0] || 0;
+                let fBase = numParts[1] || 0;
+                let cBase = numParts[2] || 0;
+                let aBase = numParts.length >= 4 ? numParts[3] : 0;
+                let mul = numParts.length >= 5 ? numParts[4] : (numParts.length === 4 && numParts[3] <= 5 && !dRaw.includes('A') ? numParts[3] : 1);
+                if (numParts.length === 4 && numParts[3] <= 5 && !dRaw.includes('A')) aBase = 0;
 
                 let p = pBase * mul; let f = fBase * mul; let c = cBase * mul; let a = aBase * mul;
                 let cal = Math.round(p * 4 + f * 9 + c * 4 + a * 7);
@@ -290,7 +339,12 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
         botReply = botReply.replace(/システムコマンド.*/gi, "").trim();
         botReply = botReply.trim(); // 最後に改行などを掃除
 
-        removeMsg(loadingId); const newMsgId = addChatMsg('bot', botReply);
+        // ★改善箇所：空吹き出しの防止
+        if (!botReply) {
+            botReply = "ばっちり記録したたま！";
+        }
+
+        removeMsg(loadingId); const newMsgId = addChatMsg('bot', botReply, true);
 
         if (recipeKeywords) {
             const btnHtml = `<br><br><div style="display:flex; flex-direction:column; gap:6px; width:100%; margin-top:8px;">
@@ -344,14 +398,15 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
             localStorage.setItem('tf_dat', JSON.stringify(lst)); ren(); upd(); window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        chatHistory.push({ role: 'model', text: botReply });
+        // ★改善箇所：記憶喪失対策として、「生テキスト(コマンド込み)」をAI側に渡す会話履歴として記憶
+        chatHistory.push({ role: 'model', text: rawText });
         if (chatHistory.length > 6) chatHistory.shift();
         return botReply;
 
     } catch (error) {
         removeMsg(loadingId);
         const errMsg = '通信エラーだたま...。もう一度送ってたま！';
-        addChatMsg('bot', errMsg);
+        addChatMsg('bot', errMsg, false);
         return errMsg;
     }
 }
@@ -410,7 +465,7 @@ window.handleCameraUpload = function (event) {
             // AIに画像データと一緒にリクエストを送信
             processAIChat(promptText, loadingId, false, base64Data).catch(err => {
                 removeMsg(loadingId);
-                addChatMsg('bot', '画像処理に失敗したたま...。');
+                addChatMsg('bot', '画像処理に失敗したたま...。', false);
             });
         };
         img.src = e.target.result;
