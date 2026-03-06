@@ -344,7 +344,7 @@ function mkTgt() {
     const b = document.getElementById('tgt-btns'); if (!b) return; b.innerHTML = "";
     [{ v: 1200, l: "女性小食" }, { v: 1600, l: "👩女性減量" }, { v: 2000, l: "👨男性減量" }, { v: 2400, l: "活動・増量" }].forEach(t => {
         const d = document.createElement('div'); d.className = 'tg-btn ' + (TG.cal === t.v ? 'act' : ''); d.innerHTML = `<span style="font-size:9px;color:#666">${t.l}</span><strong>${t.v}</strong>`;
-        d.onclick = () => { TG = { cal: t.v, ...calcPFC(t.v, TG.mode), label: t.l, mode: TG.mode, alcMode: TG.alcMode, autoReset: TG.autoReset }; localStorage.setItem('tf_tg', JSON.stringify(TG)); if (document.getElementById('cust-cal')) document.getElementById('cust-cal').value = t.v; if (document.getElementById('pfc-mode')) document.getElementById('pfc-mode').value = TG.mode; upd(); mkTgt(); }; b.appendChild(d);
+        d.onclick = () => { TG = { cal: t.v, ...calcPFC(t.v, TG.mode), label: t.l, mode: TG.mode, alcMode: TG.alcMode, autoReset: TG.autoReset, cheatTickets: TG.cheatTickets, cheatLastUsedDate: TG.cheatLastUsedDate }; localStorage.setItem('tf_tg', JSON.stringify(TG)); if (document.getElementById('cust-cal')) document.getElementById('cust-cal').value = t.v; if (document.getElementById('pfc-mode')) document.getElementById('pfc-mode').value = TG.mode; upd(); mkTgt(); }; b.appendChild(d);
     });
 }
 function toggleTgt() { const b = document.getElementById('tgt-btns'); const c = document.getElementById('cust-tgt'); const d = (b.style.display === 'grid'); b.style.display = d ? 'none' : 'grid'; c.style.display = d ? 'none' : 'flex'; }
@@ -400,7 +400,7 @@ function upd() {
 }
 function applyCust() {
     let inputCal = parseNum(document.getElementById('cust-cal').value); const c = inputCal > 0 ? inputCal : TG.cal; const selectedMode = document.getElementById('pfc-mode').value;
-    TG = { cal: c, ...calcPFC(c, selectedMode), label: "カスタム", mode: selectedMode, alcMode: document.getElementById('alc-mode-chk').checked, autoReset: TG.autoReset };
+    TG = { cal: c, ...calcPFC(c, selectedMode), label: "カスタム", mode: selectedMode, alcMode: document.getElementById('alc-mode-chk').checked, autoReset: TG.autoReset, cheatTickets: TG.cheatTickets, cheatLastUsedDate: TG.cheatLastUsedDate };
     localStorage.setItem('tf_tg', JSON.stringify(TG)); upd(); toggleTgt(); mkTgt();
 }
 
@@ -806,9 +806,9 @@ function mgrGenerateBodyDummy(months) {
         let idx = bodyData.findIndex(x => x.date === dateStrISO);
         let obj = {
             date: dateStrISO,
-            w: baseWeight.toFixed(1),
-            f: baseFat.toFixed(1),
-            waist: (baseWeight * 1.1).toFixed(1),
+            w: Number(baseWeight.toFixed(1)),
+            f: Number(baseFat.toFixed(1)),
+            waist: Number((baseWeight * 1.1).toFixed(1)),
             isDummy: true
         };
 

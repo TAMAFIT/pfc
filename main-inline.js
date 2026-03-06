@@ -108,9 +108,9 @@ function startCheatDay(active) {
 
 function cancelCheatDay() {
     isCheatDay = false;
-    localStorage.setItem('tf_cheat_day', false);
-    localStorage.setItem('tf_cheat_record', false);
-    localStorage.setItem('tf_cheat_highcarb', false);
+    localStorage.setItem('tf_cheat_day', 'false');
+    localStorage.setItem('tf_cheat_record', 'false');
+    localStorage.setItem('tf_cheat_highcarb', 'false');
     document.body.classList.remove('cheat-mode');
     document.getElementById('cheat-panel').style.display = 'none';
 
@@ -183,7 +183,7 @@ function toggleCheatRecord(skipUpd = false) {
         if (tgtArea) tgtArea.style.display = 'none';
 
         isHighCarbMode = false;
-        localStorage.setItem('tf_cheat_highcarb', false);
+        localStorage.setItem('tf_cheat_highcarb', 'false');
         if (document.getElementById('high-carb-toggle')) document.getElementById('high-carb-toggle').checked = false;
     }
     if (!skipUpd && typeof upd === 'function') upd();
