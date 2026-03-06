@@ -52,12 +52,10 @@ window.onload = () => {
     localStorage.setItem('tf_last_date', todayStr);
 
     const d = new Date(); const today = `${d.getFullYear()}-${("0" + (d.getMonth() + 1)).slice(-2)}-${("0" + d.getDate()).slice(-2)}`;
-    if (document.getElementById('b-date')) document.getElementById('b-date').value = today;
-    if (document.getElementById('reset-date')) document.getElementById('reset-date').value = today;
-    if (document.getElementById('auto-reset-chk')) document.getElementById('auto-reset-chk').checked = TG.autoReset;
-    if (document.getElementById('alc-mode-chk')) document.getElementById('alc-mode-chk').checked = TG.alcMode;
-    if (document.getElementById('pfc-mode')) document.getElementById('pfc-mode').value = TG.mode;
-    if (document.getElementById('cust-cal')) document.getElementById('cust-cal').value = TG.cal;
+    const setElVal = (id, v) => { const el = document.getElementById(id); if (el) { if (el.type === 'checkbox') el.checked = v; else el.value = v; } };
+    setElVal('b-date', today); setElVal('reset-date', today);
+    setElVal('auto-reset-chk', TG.autoReset); setElVal('alc-mode-chk', TG.alcMode);
+    setElVal('pfc-mode', TG.mode); setElVal('cust-cal', TG.cal);
 
     toggleAlcMode(true);
     if (typeof setupChatEnterKey === 'function') setupChatEnterKey();
@@ -688,7 +686,7 @@ function mgrAddTicket(diff) {
 
 function mgrUpdateSlidersFromCurrent() {
     const t = { P: 0, F: 0, C: 0 };
-    // 除外 debug food to see base? No, just calculate overall including debug
+    // デバッグ用食品も含めて全体のPFCを計算
     lst.forEach(x => { t.P += x.P; t.F += x.F; t.C += x.C; });
     const pPct = Math.round((t.P / TG.p) * 100) || 0;
     const fPct = Math.round((t.F / TG.f) * 100) || 0;
@@ -712,10 +710,10 @@ function mgrApplyPFC() {
     document.getElementById('mgr-val-f').textContent = fPct;
     document.getElementById('mgr-val-c').textContent = cPct;
 
-    // Remove old debug food
+    // 既存のデバッグ用食品を削除
     lst = lst.filter(x => x.id !== 'mgr_debug_food');
 
-    // Calculate current without debug food
+    // デバッグ用食品を除いた現在のPFCを計算
     const t = { P: 0, F: 0, C: 0 };
     lst.forEach(x => { t.P += x.P; t.F += x.F; t.C += x.C; });
 
