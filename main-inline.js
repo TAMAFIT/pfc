@@ -262,6 +262,88 @@ function handleCameraChoice(event) {
     }
 }
 
+// ▼ パッケージ成分表スキャナー制御 ▼
+let scannerStream = null;
+
+async function openScanner() {
+    closeCameraChoiceModal();
+    const modal = document.getElementById('scanner-modal');
+    const video = document.getElementById('scanner-video');
+    modal.style.display = 'flex';
+
+    try {
+        scannerStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment', width: { 理想: 1280 }, height: { 理想: 720 } }
+        });
+        video.srcObject = scannerStream;
+    } catch (err) {
+        console.error("Scanner Error:", err);
+        alert("カメラの起動に失敗したたま...。権限を確認してたま！");
+        closeScanner();
+    }
+}
+
+function closeScanner() {
+    if (scannerStream) {
+        scannerStream.getTracks().forEach(track => track.stop());
+        scannerStream = null;
+    }
+    const modal = document.getElementById('scanner-modal');
+    modal.style.display = 'none';
+    const video = document.getElementById('scanner-video');
+    video.srcObject = null;
+}
+
+async function captureScannerImage() {
+    const video = document.getElementById('scanner-video');
+    const canvas = document.getElementById('scanner-canvas');
+    const ctx = canvas.getContext('2d');
+
+    // ビデオの実際の解像度を取得
+    const videoWidth = video.videoWidth;
+    const videoHeight = video.videoHeight;
+
+    // 画面上のビデオ表示サイズと枠のサイズを取得
+    const rect = video.getBoundingClientRect();
+    const frame = document.querySelector('.scanner-frame').getBoundingClientRect();
+
+    // 枠の位置・サイズをビデオ解像度に合わせてスケール変換
+    const scaleX = videoWidth / rect.width;
+    const scaleY = videoHeight / rect.height;
+
+    const cropX = (frame.left - rect.left) * scaleX;
+    const cropY = (frame.top - rect.top) * scaleY;
+    const cropW = frame.width * scaleX;
+    const cropH = frame.height * scaleY;
+
+    // キャンバスサイズを設定（枠と同じアスペクト比で、ある程度の解像度を確保）
+    canvas.width = 800;
+    canvas.height = 800;
+
+    // 切り取り描画
+    ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, canvas.width, canvas.height);
+
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+    const base64Data = dataUrl.split(',')[1];
+
+    closeScanner();
+
+    // AIに送信 (ai.jsの関数を流用)
+    if (window.handleScannerImage) {
+        window.handleScannerImage(base64Data);
+    } else {
+        // 万が一関数の準備ができていない場合のフォールバック
+        console.warn("handleScannerImage not found, using generic upload");
+        if (typeof window.processAIChat === 'function') {
+            if (typeof toggleChat === 'function') toggleChat();
+            addChatMsg('user', '📷 (スキャン画像を送信しました)');
+            const loadingId = addChatMsg('bot', '🔍 成分表を解析中だたま...');
+            const scannerPrompt = "これは食品パッケージの成分表のスキャン画像だたま。PFCとカロリーを正確に読み取って [DATA] 形式で出力してたま！";
+            window.processAIChat(scannerPrompt, loadingId, false, base64Data);
+        }
+    }
+}
+
 // ▼ 体型写真記録モーダルの制御 ▼
 let selectedBodyPhotoObjUrl = null;
 

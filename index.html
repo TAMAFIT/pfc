@@ -440,8 +440,12 @@
 
             <div style="display: flex; flex-direction: column; gap: 12px;">
                 <button class="m-btn" style="background: var(--th); color: #fff; padding: 15px; font-size: 16px;"
+                    onclick="openScanner()">
+                    🔍 パッケージ裏をスキャン
+                </button>
+                <button class="m-btn" style="background: #555; color: #fff; padding: 15px; font-size: 16px;"
                     onclick="selectCameraTake()">
-                    📷 カメラを起動
+                    📷 カメラで直接撮影
                 </button>
                 <button class="m-btn" style="background: var(--ed); color: #fff; padding: 15px; font-size: 16px;"
                     onclick="selectCameraLibrary()">
@@ -452,6 +456,35 @@
                 </button>
             </div>
         </div>
+    </div>
+
+    <!-- ▼ パッケージ成分表スキャナーモーダル ▼ -->
+    <div id="scanner-modal" class="modal-overlay" style="display:none; z-index: 300000; background: #000;">
+        <div class="scanner-container">
+            <video id="scanner-video" autoplay playsinline muted></video>
+            
+            <!-- ガイド枠オーバーレイ -->
+            <div class="scanner-overlay">
+                <div class="scanner-frame">
+                    <div class="frame-corner top-left"></div>
+                    <div class="frame-corner top-right"></div>
+                    <div class="frame-corner bottom-left"></div>
+                    <div class="frame-corner bottom-right"></div>
+                    <div class="scanner-line"></div>
+                </div>
+                <div class="scanner-tip">枠の中に成分表を当てはめてたま！</div>
+            </div>
+
+            <!-- スキャナーコントロール -->
+            <div class="scanner-controls">
+                <button class="scanner-btn btn-close" onclick="closeScanner()">✕</button>
+                <button class="scanner-btn btn-capture" onclick="captureScannerImage()">
+                    <div class="inner-circle"></div>
+                </button>
+                <div style="width: 50px;"></div> <!-- バランス用空要素 -->
+            </div>
+        </div>
+        <canvas id="scanner-canvas" style="display:none;"></canvas>
     </div>
 
     <div id="cheat-pre-modal" class="modal-overlay">

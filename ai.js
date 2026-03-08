@@ -471,3 +471,35 @@ window.handleCameraUpload = function (event) {
     };
     reader.readAsDataURL(file);
 };
+
+// ▼ スキャナー画像専用処理 ▼
+window.handleScannerImage = function (base64Data) {
+    // チャットウィンドウを開く
+    if (typeof toggleChat === 'function') {
+        const chatWin = document.getElementById('tama-chat-window');
+        if (chatWin && chatWin.style.display !== 'flex') {
+            toggleChat();
+        }
+    }
+
+    const scannerPrompt = `
+これは食品パッケージの「栄養成分表示（ラベル）」のクローズアップ画像だたま。
+画像内の数値を正確にOCR（文字認識）して、以下のルールで出力してたま！
+
+1. 食品名は必ず「🤖 成分スキャン」にしてたま。
+2. 脂質(F)、タンパク質(P)、炭水化物(C)、エネルギー(kcal)を読み取ってたま。
+3. 読み取った数値を [DATA] 朝 | 食品名 | P, F, C, Cal の形式で出力してたま。
+4. 画像が不鮮明で読み取れない場合は「読み取れなかったたま...」とだけ返してたま。
+5. 余計な挨拶や解説は一切不要だたま。
+
+スキャン開始！
+`;
+
+    addChatMsg('user', '🔍 (成分表をスキャンしました)');
+    const loadingId = addChatMsg('bot', '🔍 成分表を解析中だたま...');
+
+    processAIChat(scannerPrompt.trim(), loadingId, false, base64Data).catch(err => {
+        removeMsg(loadingId);
+        addChatMsg('bot', 'スキャン処理に失敗したたま...。', false);
+    });
+};
