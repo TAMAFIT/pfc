@@ -5235,12 +5235,12 @@ body {
     transition: transform 0.2s ease;
 }
 
-.v-auto-send input:checked + .v-auto-switch {
+.v-auto-send input:checked ~ .v-auto-switch {
     background: #f0528d;
     box-shadow: 0 0 0 4px rgba(240, 82, 141, 0.12);
 }
 
-.v-auto-send input:checked + .v-auto-switch::after {
+.v-auto-send input:checked ~ .v-auto-switch::after {
     transform: translateX(18px);
 }
 
@@ -5321,7 +5321,7 @@ body {
         height: 16px;
     }
 
-    .v-auto-send input:checked + .v-auto-switch::after {
+    .v-auto-send input:checked ~ .v-auto-switch::after {
         transform: translateX(16px);
     }
 

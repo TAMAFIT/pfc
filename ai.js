@@ -103,6 +103,16 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) force
 window.addEventListener('pagehide', () => forceStopMic());
 window.addEventListener('blur', () => forceStopMic());
 
+function mergeVoiceInput(existingText, newText) {
+    const existing = (existingText || "").trim();
+    const incoming = (newText || "").trim();
+    if (!existing) return incoming;
+    if (!incoming) return existing;
+    if (existing.includes(incoming)) return existing;
+    if (incoming.includes(existing)) return incoming;
+    return `${existing} ${incoming}`;
+}
+
 function toggleMic() {
     activeMicTarget = 'chat';
     const micBtn = document.getElementById('mic-btn'); const inputEl = document.getElementById('chat-input');
@@ -115,11 +125,17 @@ function toggleMic() {
 
 window.toggleVoiceMic = function () {
     activeMicTarget = 'voice';
-    const vMicBtn = document.getElementById('v-main-mic'); const vStatusText = document.getElementById('v-status-text'); const vInputEl = document.getElementById('v-chat-input');
+    const vMicBtn = document.getElementById('v-main-mic');
+    const vStatusText = document.getElementById('v-status-text');
+    const vInputEl = document.getElementById('v-chat-input');
     if (isRecording) { forceStopMic(); return; }
     syncVoiceAutoSendUI();
     startRecognition(
-        () => { vMicBtn.classList.add('listening'); vStatusText.innerText = "マイクON"; vInputEl.value = ''; },
+        () => {
+            vMicBtn.classList.add('listening');
+            vStatusText.innerText = "マイクON";
+            if (voiceAutoSend) vInputEl.value = '';
+        },
         (text) => { vInputEl.value = text; sendVoiceChat(); }
     );
 };
@@ -144,7 +160,11 @@ function startRecognition(onStartCallback, onResultCallback) {
         speechHadResult = true;
         if (activeMicTarget === 'voice') {
             const vInputEl = document.getElementById('v-chat-input');
-            if (vInputEl) vInputEl.value = txt;
+            if (vInputEl) {
+                const nextText = voiceAutoSend ? txt : mergeVoiceInput(vInputEl.value, txt);
+                vInputEl.value = nextText;
+                speechLatestText = nextText;
+            }
         } else if (activeMicTarget === 'chat') {
             const cInputEl = document.getElementById('chat-input');
             if (cInputEl) cInputEl.value = txt;
