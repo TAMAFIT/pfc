@@ -84,8 +84,10 @@ const forceStopMic = (preserveSpeech = false) => {
 function syncVoiceAutoSendUI() {
     const toggle = document.getElementById('v-auto-send-toggle');
     const text = document.querySelector('.v-auto-text');
+    const state = document.querySelector('.v-auto-state');
     if (toggle) toggle.checked = voiceAutoSend;
-    if (text) text.innerText = voiceAutoSend ? "自動送信" : "手動送信";
+    if (text) text.innerText = "自動送信";
+    if (state) state.innerText = voiceAutoSend ? "ON" : "OFF";
 }
 
 window.toggleVoiceAutoSend = function () {

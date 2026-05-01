@@ -27,7 +27,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260501-cheat-inline02">
+    <link rel="stylesheet" href="style.css?v=20260501-voice-ui01">
 </head>
 
 <body>
@@ -703,13 +703,14 @@
             <div class="v-mic-container">
                 <label class="v-auto-send">
                     <input type="checkbox" id="v-auto-send-toggle" onchange="toggleVoiceAutoSend()">
+                    <span class="v-auto-state">ON</span>
                     <span class="v-auto-switch"></span>
                     <span class="v-auto-text">自動送信</span>
                 </label>
                 <div class="v-mic-btn pulse-animation" id="v-main-mic" onclick="toggleVoiceMic()">
                     🎙️
                 </div>
-                <button class="v-send-now" id="v-send-now" onclick="finalizeSpeechNow()" type="button">すぐ送信</button>
+                <button class="v-send-now" id="v-send-now" onclick="finalizeSpeechNow()" type="button">送信</button>
             </div>
         </div>
 
@@ -850,7 +851,7 @@
     <script src="database.js?v=20260501-trash-delete02"></script>
     <script src="tamachan-data.js?v=20260501-trash-delete02"></script>
     <script src="app.js?v=20260501-cheat-inline01"></script>
-    <script src="ai.js?v=20260501-voice-simple01"></script>
+    <script src="ai.js?v=20260501-voice-ui01"></script>
 
     <!-- ▼ 新規追加: アルバムUIレンダリング ▼ -->
     <script src="main-inline.js?v=20260501-cheat-inline01"></script>
