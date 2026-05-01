@@ -1,12 +1,155 @@
 // app.js : アプリのコアシステム (データ管理・PFC計算・グラフ・体組成)
 // ※AI通信やマイク制御は ai.js に分離しています。
 
-let TG = { cal: 2000, p: 150, f: 44, c: 250, label: "👨男性減量", mode: "std", alcMode: false, autoReset: true };
+let TG = { cal: 2000, p: 150, f: 44, c: 250, label: "👨男性減量", mode: "std", alcMode: false, autoReset: true, cheatReservedDate: null };
 let lst = []; let fav = []; let myFoods = []; let hist = []; let bodyData = []; let chatHistory = []; let selIdx = -1; let editIdx = -1;
+let deletedToday = { date: "", items: [] };
 const toHira = s => s.replace(/[\u30a1-\u30f6]/g, m => String.fromCharCode(m.charCodeAt(0) - 0x60));
 
 function parseNum(val) { if (typeof val !== 'string') return parseFloat(val) || 0; const half = val.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)); return parseFloat(half) || 0; }
 function getAutoTime() { const h = new Date().getHours(); if (h >= 4 && h < 11) return "朝"; if (h >= 11 && h < 16) return "昼"; return "晩"; }
+
+function getTodayKey() { const d = new Date(); return `${d.getFullYear()}-${("0" + (d.getMonth() + 1)).slice(-2)}-${("0" + d.getDate()).slice(-2)}`; }
+
+function loadDeletedToday() {
+    const today = getTodayKey();
+    try {
+        deletedToday = JSON.parse(localStorage.getItem('tf_deleted_today') || "{}");
+    } catch (e) {
+        deletedToday = {};
+    }
+    if (!deletedToday || deletedToday.date !== today || !Array.isArray(deletedToday.items)) {
+        deletedToday = { date: today, items: [] };
+        saveDeletedToday();
+    }
+}
+
+function saveDeletedToday() {
+    if (!deletedToday || !Array.isArray(deletedToday.items)) deletedToday = { date: getTodayKey(), items: [] };
+    deletedToday.date = getTodayKey();
+    localStorage.setItem('tf_deleted_today', JSON.stringify(deletedToday));
+}
+
+function moveDeletedItemsToTrash(items, source = "manual") {
+    loadDeletedToday();
+    const now = Date.now();
+    const trashIds = [];
+    items.forEach(item => {
+        const trashId = now + Math.floor(Math.random() * 100000);
+        trashIds.push(trashId);
+        deletedToday.items.unshift({
+            trashId,
+            deletedAt: now,
+            source,
+            item: JSON.parse(JSON.stringify(item))
+        });
+    });
+    saveDeletedToday();
+    renderDeletedTodayPanel();
+    return trashIds;
+}
+
+function showDeleteUndo(count, trashIds) {
+    let bar = document.getElementById('delete-undo-bar');
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'delete-undo-bar';
+        document.body.appendChild(bar);
+    }
+    bar.innerHTML = `<span>${count}件削除しました</span><button onclick="restoreDeletedTrashIds([${trashIds.join(',')}])">元に戻す</button>`;
+    bar.classList.add('show');
+    clearTimeout(bar._timer);
+    bar._timer = setTimeout(() => bar.classList.remove('show'), 6500);
+}
+
+function deleteLogIds(ids, source = "manual", showUndo = true) {
+    const targetIds = (ids || []).map(Number).filter(Boolean);
+    if (targetIds.length === 0) return 0;
+    const targets = lst.filter(item => targetIds.includes(Number(item.id)));
+    if (targets.length === 0) return 0;
+    const trashIds = moveDeletedItemsToTrash(targets, source);
+    lst = lst.filter(item => !targetIds.includes(Number(item.id)));
+    sv();
+    ren();
+    upd();
+    if (showUndo) showDeleteUndo(targets.length, trashIds);
+    return targets.length;
+}
+
+function restoreDeletedTrashIds(trashIds) {
+    loadDeletedToday();
+    const ids = (trashIds || []).map(Number);
+    const restoreItems = deletedToday.items.filter(entry => ids.includes(Number(entry.trashId)));
+    if (restoreItems.length === 0) return;
+    restoreItems.reverse().forEach(entry => {
+        const item = { ...entry.item, id: entry.item.id || Date.now() + Math.floor(Math.random() * 1000) };
+        if (!lst.some(x => Number(x.id) === Number(item.id))) lst.push(item);
+    });
+    deletedToday.items = deletedToday.items.filter(entry => !ids.includes(Number(entry.trashId)));
+    saveDeletedToday();
+    sv();
+    ren();
+    renderDeletedTodayPanel();
+    upd();
+    if (typeof showToast === 'function') showToast(`${restoreItems.length}件を元に戻しました`);
+}
+
+function restoreDeletedItem(trashId) {
+    restoreDeletedTrashIds([trashId]);
+}
+
+function renderDeletedTodayPanel() {
+    const box = document.getElementById('deleted-today-panel');
+    if (!box) return;
+    loadDeletedToday();
+    const items = deletedToday.items || [];
+    if (items.length === 0) {
+        box.style.display = 'none';
+        box.innerHTML = '';
+        return;
+    }
+    box.style.display = 'block';
+    box.innerHTML = `
+        <details class="trash-fold">
+            <summary>
+                <div>
+                    <strong>今日削除した記録</strong>
+                    <span>${items.length}件を一時保管中</span>
+                </div>
+                <em>開く</em>
+            </summary>
+            <div class="trash-list">
+                ${items.map(entry => {
+                    const x = entry.item;
+                    return `<div class="trash-row">
+                        <div>
+                            <strong>${String(x.N || "").replace(/^🤖\s*/, "")}</strong>
+                            <span>${x.time || "-"} / ${Math.round(x.Cal || 0)}kcal / P${Number(x.P || 0).toFixed(1)} F${Number(x.F || 0).toFixed(1)} C${Number(x.C || 0).toFixed(1)}</span>
+                        </div>
+                        <button onclick="restoreDeletedItem(${entry.trashId})">戻す</button>
+                    </div>`;
+                }).join('')}
+            </div>
+        </details>`;
+}
+
+function requestDeleteAllTodayConfirm() {
+    const box = document.getElementById('delete-all-confirm');
+    if (!box) return;
+    box.style.display = 'flex';
+}
+
+function closeDeleteAllConfirm() {
+    const box = document.getElementById('delete-all-confirm');
+    if (box) box.style.display = 'none';
+}
+
+function confirmDeleteAllToday() {
+    const ids = lst.map(item => item.id);
+    const count = deleteLogIds(ids, "all-day", true);
+    closeDeleteAllConfirm();
+    if (typeof showToast === 'function') showToast(count > 0 ? "今日の記録を削除しました" : "削除する記録がありません");
+}
 
 window.onload = () => {
     if (localStorage.getItem('tf_tg')) {
@@ -14,11 +157,13 @@ window.onload = () => {
         if (TG.alcMode === undefined) TG.alcMode = false;
         if (TG.autoReset === undefined) TG.autoReset = true;
         if (TG.cheatLastUsedDate === undefined) TG.cheatLastUsedDate = null;
+        if (TG.cheatReservedDate === undefined) TG.cheatReservedDate = null;
     }
     if (localStorage.getItem('tf_fav')) fav = JSON.parse(localStorage.getItem('tf_fav'));
     if (localStorage.getItem('tf_my')) myFoods = JSON.parse(localStorage.getItem('tf_my'));
     if (localStorage.getItem('tf_hist')) hist = JSON.parse(localStorage.getItem('tf_hist'));
     if (localStorage.getItem('tf_body')) bodyData = JSON.parse(localStorage.getItem('tf_body'));
+    loadDeletedToday();
     if (!TG.mode) TG.mode = "std";
 
     const savedData = localStorage.getItem('tf_dat');
@@ -59,15 +204,35 @@ window.onload = () => {
 
     toggleAlcMode(true);
     if (typeof setupChatEnterKey === 'function') setupChatEnterKey();
-    mkCat(); mkTgt(); upd(); ren(); checkCheatTicketStatus();
+    mkCat(); mkTgt(); upd(); ren(); renderDeletedTodayPanel(); checkCheatTicketStatus();
 };
 
 // ▼▼▼ チートデイチケット管理 ▼▼▼
+function getCheatLocalDateKey(date = new Date()) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+function formatCheatStatusDate(dateKey) {
+    if (!dateKey) return "";
+    const [y, m, d] = dateKey.split("-");
+    return `${Number(m)}/${Number(d)}`;
+}
+
 function checkCheatTicketStatus() {
     const wrap = document.getElementById('premium-ticket-wrap');
     const badge = document.getElementById('ticket-count-badge');
     const subText = document.getElementById('ticket-cooldown-text');
+    let inlineActions = document.getElementById('cheat-inline-actions');
     if (!wrap || !badge || !subText) return;
+    if (!inlineActions && badge.parentElement) {
+        inlineActions = document.createElement('div');
+        inlineActions.id = 'cheat-inline-actions';
+        inlineActions.className = 'cheat-inline-actions';
+        badge.parentElement.appendChild(inlineActions);
+    }
 
     if (TG.cheatTickets === undefined) {
         TG.cheatTickets = 1;
@@ -79,7 +244,11 @@ function checkCheatTicketStatus() {
         }
     }
 
-    if (TG.cheatLastUsedDate) {
+    if (TG.cheatReservedDate && TG.cheatReservedDate !== getCheatLocalDateKey()) {
+        TG.cheatTickets = 0;
+    }
+
+    if (!TG.cheatReservedDate && TG.cheatLastUsedDate) {
         const lastUsed = new Date(TG.cheatLastUsedDate);
         const today = new Date();
         const diffDays = Math.ceil(Math.abs(today - lastUsed) / (1000 * 60 * 60 * 24));
@@ -93,28 +262,40 @@ function checkCheatTicketStatus() {
         wrap.classList.add('disabled');
         wrap.onclick = null;
         badge.textContent = `x 0`;
-        if (TG.cheatLastUsedDate) {
+        if (TG.cheatReservedDate && TG.cheatReservedDate !== getCheatLocalDateKey()) {
+            subText.textContent = `${formatCheatStatusDate(TG.cheatReservedDate)}に予約済みです`;
+            if (inlineActions) {
+                inlineActions.style.display = 'flex';
+                inlineActions.innerHTML = `
+                    <button type="button" onclick="event.stopPropagation(); changeCheatReservation()">日程変更</button>
+                    <button type="button" onclick="event.stopPropagation(); cancelCheatReservation()">取消</button>
+                `;
+            }
+        } else if (TG.cheatLastUsedDate) {
             const today = new Date();
             const diffDays = Math.ceil(Math.abs(today - new Date(TG.cheatLastUsedDate)) / (1000 * 60 * 60 * 24));
-            subText.textContent = `あと${Math.max(0, 7 - diffDays)}日で復活します`;
+            subText.textContent = `あと${Math.max(0, 7 - diffDays)}日で再利用できます`;
+            if (inlineActions) inlineActions.style.display = 'none';
         } else {
-            subText.textContent = `チケットがありません`;
+            subText.textContent = `現在利用できるパスがありません`;
+            if (inlineActions) inlineActions.style.display = 'none';
         }
     } else {
         wrap.classList.remove('disabled');
         wrap.onclick = () => { if (typeof openPreCheatModal === 'function') openPreCheatModal(); };
         badge.textContent = `x ${TG.cheatTickets}`;
-        subText.textContent = "週に1回、ご褒美の日を。";
+        subText.textContent = "週に1回、ご褒美の日を設定できます";
+        if (inlineActions) inlineActions.style.display = 'none';
     }
 
     const mgrTick = document.getElementById('mgr-ticket-count');
     if (mgrTick) mgrTick.textContent = TG.cheatTickets;
 }
 
-function consumeCheatTicket() {
+function consumeCheatTicket(usedDate = null) {
     if (TG.cheatTickets === undefined) TG.cheatTickets = 1;
     if (TG.cheatTickets > 0) TG.cheatTickets--;
-    TG.cheatLastUsedDate = new Date().toISOString();
+    TG.cheatLastUsedDate = usedDate ? `${usedDate}T00:00:00` : new Date().toISOString();
     localStorage.setItem('tf_tg', JSON.stringify(TG));
     checkCheatTicketStatus();
 }
@@ -123,6 +304,7 @@ function restoreCheatTicket() {
     if (TG.cheatTickets === undefined) TG.cheatTickets = 0;
     TG.cheatTickets++;
     TG.cheatLastUsedDate = null;
+    TG.cheatReservedDate = null;
     localStorage.setItem('tf_tg', JSON.stringify(TG));
     checkCheatTicketStatus();
 }
@@ -262,21 +444,25 @@ function addM() {
 function ren() {
     const tlArea = document.getElementById('timeline-area'); if (!tlArea) return; tlArea.innerHTML = ""; let totalCal = 0;
     const times = ["朝", "昼", "晩", "間食"]; const emojis = { "朝": "☀️", "昼": "☁️", "晩": "🌙", "間食": "☕" };
+    const cleanFoodName = name => String(name || "").replace(/^🤖\s*/, "");
+    const cleanUnit = unit => String(unit || "") === "AI" ? "" : String(unit || "");
     lst.forEach(x => { if (!times.includes(x.time)) x.time = "朝"; });
     times.forEach(t => {
         const items = lst.map((x, i) => ({ ...x, i })).filter(x => x.time === t); if (items.length === 0) return;
         let tCal = 0, tP = 0, tF = 0, tC = 0, tA = 0; items.forEach(x => { tCal += x.Cal; tP += x.P; tF += x.F; tC += x.C; tA += (x.A || 0); totalCal += x.Cal; });
-        const sec = document.createElement('div'); sec.className = 'tl-sec'; let aStr = (TG.alcMode && tA > 0) ? ` <span style="color:var(--my)">A${tA.toFixed(0)}</span>` : "";
-        sec.innerHTML = `<div class="tl-head ${t}"><div>${emojis[t]} ${t}</div><div class="tl-stats">${tCal}kcal (P${tP.toFixed(0)} F${tF.toFixed(0)} C${tC.toFixed(0)}${aStr})</div></div><ul class="f-list">${items.map(x => {
+        const sec = document.createElement('details'); sec.className = 'tl-sec meal-card'; let aStr = (TG.alcMode && tA > 0) ? ` <span class="macro-a">A${tA.toFixed(0)}</span>` : "";
+        const mealLabel = t === "間食" ? "間食" : `${t}食`;
+        sec.innerHTML = `<summary class="meal-summary ${t}"><div class="meal-left"><div><div class="meal-title"><span>${mealLabel}</span></div></div></div><div class="meal-macro-line"><span>P ${tP.toFixed(0)}g</span><span>F ${tF.toFixed(0)}g</span><span>C ${tC.toFixed(0)}g</span>${aStr}</div><div class="tl-stats"><strong>${tCal.toLocaleString()}</strong><em>kcal</em></div><span class="meal-chevron">›</span></summary><ul class="f-list meal-detail-list">${items.map(x => {
             let aTag = (TG.alcMode && x.A > 0) ? ` <span style="color:var(--my)">A${x.A.toFixed(1)}</span>` : ""; let isAlcClass = (TG.alcMode && x.A > 0) ? "alc" : "";
-            return `<li class="f-item ${isAlcClass}"><div><strong>${x.N}</strong> <small>${x.U}</small><br><span style="font-size:12px;color:#666">${x.Cal}kcal (P${x.P.toFixed(1)} F${x.F.toFixed(1)} C${x.C.toFixed(1)}${aTag})</span></div><div class="act-btns"><button class="l-btn b-re" onclick="reAdd(${x.i})">複製</button><button class="l-btn b-ed" onclick="ed(${x.i})">編集</button><button class="l-btn b-del" onclick="del(${x.i})">消去</button></div></li>`;
+            const unitText = cleanUnit(x.U);
+            return `<li class="f-item ${isAlcClass}"><div class="food-info"><strong>${cleanFoodName(x.N)}</strong>${unitText ? `<small>${unitText}</small>` : ""}</div><div class="food-macros"><span>P ${x.P.toFixed(1)}g</span><span>F ${x.F.toFixed(1)}g</span><span>C ${x.C.toFixed(1)}g</span>${aTag}</div><div class="food-cal"><strong>${x.Cal}</strong><span>kcal</span></div><div class="act-btns"><button class="l-btn b-re" onclick="reAdd(${x.i})">複製</button><button class="l-btn b-ed" onclick="ed(${x.i})">編集</button><button class="l-btn b-del" onclick="del(${x.i})">消去</button></div></li>`;
         }).join('')}</ul>`; tlArea.appendChild(sec);
     });
-    if (lst.length === 0) tlArea.innerHTML = "<p style='text-align:center;color:#ccc;font-size:14px;'>まだ記録がありません</p>";
-    if (document.getElementById('tot-cal')) document.getElementById('tot-cal').textContent = totalCal;
+    if (lst.length === 0) tlArea.innerHTML = "<div class='record-empty'>まだ記録がありません<br><span>音声・手入力・献立ガチャから食事を追加できます</span></div>";
+    if (document.getElementById('tot-cal')) document.getElementById('tot-cal').textContent = totalCal.toLocaleString();
 }
 
-function del(i) { lst.splice(i, 1); sv(); ren(); upd(); }
+function del(i) { if (!lst[i]) return; deleteLogIds([lst[i].id], "manual", true); }
 function reAdd(i) { lst.push({ ...lst[i], id: Date.now() + Math.floor(Math.random() * 1000) }); sv(); ren(); upd(); }
 function ed(i) {
     const x = lst[i]; editIdx = i; selIdx = -1; document.getElementById('amt-area').style.display = 'block'; const bd = document.getElementById('reg-bd'); bd.style.display = 'block'; bd.classList.add('editing');
@@ -342,7 +528,7 @@ function mkTgt() {
     const b = document.getElementById('tgt-btns'); if (!b) return; b.innerHTML = "";
     [{ v: 1200, l: "女性小食" }, { v: 1600, l: "👩女性減量" }, { v: 2000, l: "👨男性減量" }, { v: 2400, l: "活動・増量" }].forEach(t => {
         const d = document.createElement('div'); d.className = 'tg-btn ' + (TG.cal === t.v ? 'act' : ''); d.innerHTML = `<span style="font-size:9px;color:#666">${t.l}</span><strong>${t.v}</strong>`;
-        d.onclick = () => { TG = { cal: t.v, ...calcPFC(t.v, TG.mode), label: t.l, mode: TG.mode, alcMode: TG.alcMode, autoReset: TG.autoReset, cheatTickets: TG.cheatTickets, cheatLastUsedDate: TG.cheatLastUsedDate }; localStorage.setItem('tf_tg', JSON.stringify(TG)); if (document.getElementById('cust-cal')) document.getElementById('cust-cal').value = t.v; if (document.getElementById('pfc-mode')) document.getElementById('pfc-mode').value = TG.mode; upd(); mkTgt(); }; b.appendChild(d);
+        d.onclick = () => { TG = { cal: t.v, ...calcPFC(t.v, TG.mode), label: t.l, mode: TG.mode, alcMode: TG.alcMode, autoReset: TG.autoReset, cheatTickets: TG.cheatTickets, cheatLastUsedDate: TG.cheatLastUsedDate, cheatReservedDate: TG.cheatReservedDate }; localStorage.setItem('tf_tg', JSON.stringify(TG)); if (document.getElementById('cust-cal')) document.getElementById('cust-cal').value = t.v; if (document.getElementById('pfc-mode')) document.getElementById('pfc-mode').value = TG.mode; upd(); mkTgt(); }; b.appendChild(d);
     });
 }
 function toggleTgt() { const b = document.getElementById('tgt-btns'); const c = document.getElementById('cust-tgt'); const d = (b.style.display === 'grid'); b.style.display = d ? 'none' : 'grid'; c.style.display = d ? 'none' : 'flex'; }
@@ -353,16 +539,39 @@ function calcPFC(c, m) {
 }
 function upd() {
     const t = { Cal: 0, P: 0, F: 0, C: 0, A: 0 }; lst.forEach(x => { t.Cal += x.Cal; t.P += x.P; t.F += x.F; t.C += x.C; t.A += (x.A || 0); });
-    if (document.getElementById('cur-cal')) document.getElementById('cur-cal').textContent = t.Cal;
+    if (document.getElementById('cur-cal')) document.getElementById('cur-cal').textContent = Math.round(t.Cal).toLocaleString();
     if (document.getElementById('cur-p')) document.getElementById('cur-p').textContent = t.P.toFixed(0);
     if (document.getElementById('cur-f')) document.getElementById('cur-f').textContent = t.F.toFixed(0);
     if (document.getElementById('cur-c')) document.getElementById('cur-c').textContent = t.C.toFixed(0);
 
     const setBar = (k, v, tg, u) => {
         const r = tg - v; const el = document.getElementById('bar-' + k.toLowerCase()); const tx = document.getElementById('rem-' + k.toLowerCase()); const tbox = document.getElementById('bar-text-' + k.toLowerCase());
-        if (el) { let pct = Math.min((v / tg) * 100, 100); el.style.width = pct + '%'; el.className = 'bar ' + (r < 0 ? 'ov' : ''); }
-        if (tx) { tx.className = 'rem ' + (r < 0 ? 'ov' : ''); tx.textContent = r < 0 ? `+${Math.abs(r).toFixed(0)}${u}` : `残${r.toFixed(0)}${u}`; }
-        if (tbox) tbox.textContent = `${v.toFixed(0)} / ${Math.round(tg)}${u}`;
+        const rawPct = tg > 0 ? (v / tg) * 100 : 0;
+        const pct = Math.min(rawPct, 100);
+        if (el) { el.style.width = pct + '%'; el.className = 'bar ' + (r < 0 ? 'ov' : ''); }
+        if (tx) {
+            tx.className = (k === 'Cal' ? 'rem cal-rem ' : 'macro-goal ') + (r < 0 ? 'ov' : '');
+            const remText = r < 0 ? `+${Math.abs(r).toFixed(0)}${u}` : `${r.toFixed(0)}${u}`;
+            if (k === 'Cal') {
+                const formatted = remText.replace(/\d+/, (n) => Number(n).toLocaleString());
+                tx.classList.toggle('wide', formatted.replace(/[^\d]/g, '').length >= 4);
+                tx.innerHTML = formatted.replace('kcal', '<small>kcal</small>');
+            } else {
+                tx.textContent = `目標 ${Math.round(tg)}${u}`;
+            }
+        }
+        if (tbox) tbox.textContent = k === 'Cal' ? `${Math.round(rawPct)}%` : '';
+        if (k === 'Cal') {
+            const targetEl = document.getElementById('target-cal');
+            const noteEl = document.getElementById('cal-rem-note');
+            if (targetEl) targetEl.textContent = `目標 ${Math.round(tg).toLocaleString()} kcal`;
+            if (noteEl) {
+                if (r < 0) noteEl.textContent = "今日は目標を超えています";
+                else if (rawPct >= 80) noteEl.textContent = "あと少しで目標達成！";
+                else if (rawPct > 0) noteEl.textContent = "いいペースです";
+                else noteEl.textContent = "まずは1食目を記録しよう";
+            }
+        }
     };
 
     // ハイカーボモード反映
@@ -371,9 +580,10 @@ function upd() {
     let dispP = TG.p;
     let dispF = TG.f;
     let dispC = TG.c;
+    const highCarbMultiplier = 1.5;
 
     if (currentIsHighCarb) {
-        dispCal = TG.cal * 2;
+        dispCal = TG.cal * highCarbMultiplier;
         // P、Fは維持し、余ったカロリーをすべてCに
         dispP = TG.p;
         dispF = TG.f;
@@ -387,10 +597,13 @@ function upd() {
 
     if (document.getElementById('tgt-disp')) {
         if (currentIsHighCarb) {
-            document.getElementById('tgt-disp').textContent = `${dispCal}kcal [ハイカーボ特化] ▼`;
+            document.getElementById('tgt-disp').textContent = `${Math.round(dispCal).toLocaleString()} kcal・ハイカーボ`;
         } else {
-            document.getElementById('tgt-disp').textContent = `${dispCal}kcal [${modeName.split('(')[0]}] ▼`;
+            document.getElementById('tgt-disp').textContent = `${Math.round(dispCal).toLocaleString()} kcal・${modeName.split('(')[0]}`;
         }
+    }
+    if (document.getElementById('dash-target-cal')) {
+        document.getElementById('dash-target-cal').textContent = Math.round(dispCal).toLocaleString();
     }
     if (document.getElementById('pfc-ratio-disp')) {
         document.getElementById('pfc-ratio-disp').textContent = currentIsHighCarb ? `(ハイカーボ燃焼モード)` : modeName;
@@ -398,7 +611,7 @@ function upd() {
 }
 function applyCust() {
     let inputCal = parseNum(document.getElementById('cust-cal').value); const c = inputCal > 0 ? inputCal : TG.cal; const selectedMode = document.getElementById('pfc-mode').value;
-    TG = { cal: c, ...calcPFC(c, selectedMode), label: "カスタム", mode: selectedMode, alcMode: document.getElementById('alc-mode-chk').checked, autoReset: TG.autoReset, cheatTickets: TG.cheatTickets, cheatLastUsedDate: TG.cheatLastUsedDate };
+    TG = { cal: c, ...calcPFC(c, selectedMode), label: "カスタム", mode: selectedMode, alcMode: document.getElementById('alc-mode-chk').checked, autoReset: TG.autoReset, cheatTickets: TG.cheatTickets, cheatLastUsedDate: TG.cheatLastUsedDate, cheatReservedDate: TG.cheatReservedDate };
     localStorage.setItem('tf_tg', JSON.stringify(TG)); upd(); toggleTgt(); mkTgt();
 }
 
@@ -410,7 +623,7 @@ function importData(input) {
     reader.onload = function (e) {
         try {
             const data = JSON.parse(e.target.result); const safeNum = (v) => isNaN(parseFloat(v)) ? 0 : parseFloat(v);
-            if (data.dat) { let rawLst = JSON.parse(data.dat); let fixedLst = rawLst.map(x => ({ id: x.id || Date.now() + Math.floor(Math.random() * 1000), N: x.N || x.n || "不明な食品", P: safeNum(x.P !== undefined ? x.P : x.p), F: safeNum(x.F !== undefined ? x.F : x.f), C: safeNum(x.C !== undefined ? x.C : x.c), A: safeNum(x.A !== undefined ? x.A : x.a), Cal: Math.round(safeNum(x.Cal !== undefined ? x.Cal : x.cal)), U: x.U || x.u || "-", time: x.time || "朝" })); localStorage.setItem('tf_dat', JSON.stringify(fixedLst)); }
+            if (data.dat) { let rawLst = JSON.parse(data.dat); let fixedLst = rawLst.map(x => ({ id: x.id || Date.now() + Math.floor(Math.random() * 1000), N: x.N || x.n || "不明な食品", P: safeNum(x.P !== undefined ? x.P : x.p), F: safeNum(x.F !== undefined ? x.F : x.f), C: safeNum(x.C !== undefined ? x.C : x.c), A: safeNum(x.A !== undefined ? x.A : x.a), Cal: Math.round(safeNum(x.Cal !== undefined ? x.Cal : x.cal)), U: x.U || x.u || "-", time: x.time || "朝" })); localStorage.setItem('tf_dat', JSON.stringify(fixedLst)); localStorage.removeItem('tf_deleted_today'); localStorage.removeItem('tf_last_ai_added_ids'); }
             if (data.hist) { let rawHist = JSON.parse(data.hist); let fixedHist = rawHist.map(h => ({ d: h.d || "不明な日", s: { P: safeNum(h.s?.P !== undefined ? h.s.P : h.s?.p), F: safeNum(h.s?.F !== undefined ? h.s.F : h.s?.f), C: safeNum(h.s?.C !== undefined ? h.s.C : h.s?.c), A: safeNum(h.s?.A !== undefined ? h.s.A : h.s?.a), Cal: Math.round(safeNum(h.s?.Cal !== undefined ? h.s.Cal : h.s?.cal)) }, l: (h.l || []).map(x => ({ id: x.id || Date.now() + Math.floor(Math.random() * 1000), N: x.N || x.n || "不明", P: safeNum(x.P !== undefined ? x.P : x.p), F: safeNum(x.F !== undefined ? x.F : x.f), C: safeNum(x.C !== undefined ? x.C : x.c), A: safeNum(x.A !== undefined ? x.A : x.a), Cal: Math.round(safeNum(x.Cal !== undefined ? x.Cal : x.cal)), U: x.U || x.u || "-", time: x.time || "朝" })) })); localStorage.setItem('tf_hist', JSON.stringify(fixedHist)); }
             if (data.my) { let rawMy = JSON.parse(data.my); let fixedMy = rawMy.map(x => ({ N: x.N || x.n || "不明", P: safeNum(x.P !== undefined ? x.P : x.p), F: safeNum(x.F !== undefined ? x.F : x.f), C: safeNum(x.C !== undefined ? x.C : x.c), A: safeNum(x.A !== undefined ? x.A : x.a), Cal: Math.round(safeNum(x.Cal !== undefined ? x.Cal : x.cal)) })); localStorage.setItem('tf_my', JSON.stringify(fixedMy)); }
             if (data.tg) { let tgData = JSON.parse(data.tg); if (tgData.alcMode === undefined) tgData.alcMode = false; if (tgData.autoReset === undefined) tgData.autoReset = true; localStorage.setItem('tf_tg', JSON.stringify(tgData)); }
@@ -679,7 +892,10 @@ function mgrAddTicket(diff) {
     if (TG.cheatTickets === undefined) TG.cheatTickets = (TG.cheatLastUsedDate ? 0 : 1);
     TG.cheatTickets += diff;
     if (TG.cheatTickets < 0) TG.cheatTickets = 0;
-    if (TG.cheatTickets > 0) TG.cheatLastUsedDate = null; // Clear cooldown if any
+    if (TG.cheatTickets > 0) {
+        TG.cheatLastUsedDate = null; // Clear cooldown if any
+        TG.cheatReservedDate = null;
+    }
     localStorage.setItem('tf_tg', JSON.stringify(TG));
     checkCheatTicketStatus();
 }

@@ -82,24 +82,120 @@ let isCheatDay = localStorage.getItem('tf_cheat_day') === 'true';
 let recordOnCheatDay = localStorage.getItem('tf_cheat_record') === 'true';
 let isHighCarbMode = localStorage.getItem('tf_cheat_highcarb') === 'true';
 
-function openPreCheatModal() { document.getElementById('cheat-pre-modal').style.display = 'flex'; }
+let pendingCheatAction = null;
+let pendingCheatDate = null;
+let cheatReserveReturnToChoice = true;
+
+function getLocalDateKey(date = new Date()) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+function formatCheatDate(dateKey) {
+    if (!dateKey) return "";
+    const [y, m, d] = dateKey.split("-");
+    return `${Number(m)}/${Number(d)}`;
+}
+
+function openPreCheatModal() { openCheatModal(); }
 function closePreCheatModal() { document.getElementById('cheat-pre-modal').style.display = 'none'; }
-function confirmPreCheatModal() { closePreCheatModal(); openCheatModal(); }
+
+function openCheatConfirm(action, dateKey = null) {
+    pendingCheatAction = action;
+    pendingCheatDate = dateKey;
+    const text = document.getElementById('cheat-confirm-text');
+    if (text) {
+        text.textContent = action === 'reserve'
+            ? `${formatCheatDate(dateKey)}にチートデイパスを予約します。`
+            : "今日、チートデイパスを使用します。";
+    }
+    document.getElementById('cheat-pre-modal').style.display = 'flex';
+}
+
+function confirmPreCheatModal() {
+    closePreCheatModal();
+    if (pendingCheatAction === 'reserve') {
+        reserveCheatDay(pendingCheatDate);
+    } else if (pendingCheatAction === 'today') {
+        startCheatDay(true);
+    }
+    pendingCheatAction = null;
+    pendingCheatDate = null;
+}
 
 function openCheatModal() { document.getElementById('cheat-ticket-modal').style.display = 'flex'; }
 function closeCheatModal() { document.getElementById('cheat-ticket-modal').style.display = 'none'; }
-function reserveCheatDay() {
-    if (typeof consumeCheatTicket === 'function') consumeCheatTicket();
-    alert('カレンダーで予約しました！（※今回は表示のみ）\n1週間後まで再利用できなくなりました。');
+
+function prepareCheatToday() {
     closeCheatModal();
+    openCheatConfirm('today');
 }
-function startCheatDay(active) {
+
+function openCheatReserveModal(returnToChoice = true) {
+    cheatReserveReturnToChoice = returnToChoice;
+    closeCheatModal();
+    const input = document.getElementById('cheat-reserve-date');
+    if (input) {
+        const today = getLocalDateKey();
+        input.min = today;
+        input.value = TG.cheatReservedDate || today;
+    }
+    document.getElementById('cheat-reserve-modal').style.display = 'flex';
+}
+
+function closeCheatReserveModal() {
+    document.getElementById('cheat-reserve-modal').style.display = 'none';
+    if (cheatReserveReturnToChoice) openCheatModal();
+}
+
+function prepareCheatReserve() {
+    const input = document.getElementById('cheat-reserve-date');
+    const dateKey = input ? input.value : "";
+    if (!dateKey) {
+        if (typeof showToast === 'function') showToast("予約日を選んでください。");
+        return;
+    }
+    document.getElementById('cheat-reserve-modal').style.display = 'none';
+    openCheatConfirm('reserve', dateKey);
+}
+
+function reserveCheatDay(dateKey) {
+    if (!dateKey) return;
+    if (dateKey === getLocalDateKey()) {
+        startCheatDay(true);
+        return;
+    }
+    TG.cheatReservedDate = dateKey;
+    if (typeof consumeCheatTicket === 'function') consumeCheatTicket(dateKey);
+    localStorage.setItem('tf_tg', JSON.stringify(TG));
+    if (typeof showToast === 'function') showToast(`${formatCheatDate(dateKey)}にチートデイを予約しました。`);
+    if (typeof checkCheatTicketStatus === 'function') checkCheatTicketStatus();
+}
+
+function changeCheatReservation() {
+    openCheatReserveModal(false);
+}
+
+function cancelCheatReservation() {
+    if (!confirm("チートデイの予約を取り消しますか？\nチケットは戻ります。")) return;
+    TG.cheatReservedDate = null;
+    if (typeof restoreCheatTicket === 'function') restoreCheatTicket();
+    localStorage.setItem('tf_tg', JSON.stringify(TG));
+    if (typeof checkCheatTicketStatus === 'function') checkCheatTicketStatus();
+    if (typeof showToast === 'function') showToast("チートデイ予約を取り消しました。");
+}
+
+function startCheatDay(active, consumeTicket = true) {
     isCheatDay = active;
     localStorage.setItem('tf_cheat_day', active);
     if (active) {
         document.body.classList.add('cheat-mode');
         document.getElementById('cheat-panel').style.display = 'block';
-        if (typeof consumeCheatTicket === 'function') consumeCheatTicket();
+        TG.cheatReservedDate = null;
+        localStorage.setItem('tf_tg', JSON.stringify(TG));
+        if (consumeTicket && typeof consumeCheatTicket === 'function') consumeCheatTicket();
         if (typeof showToast === 'function') showToast("🎉 チートデイ発動！今日は楽しむたま！\n（1週間使えなくなりました）");
         toggleCheatRecord();
     }
@@ -154,6 +250,9 @@ function finishCheatDay() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    if (!isCheatDay && TG.cheatReservedDate === getLocalDateKey()) {
+        startCheatDay(true, false);
+    }
     if (isCheatDay) {
         document.body.classList.add('cheat-mode');
         document.getElementById('cheat-panel').style.display = 'block';
@@ -203,6 +302,220 @@ function toggleManualPanel() {
         el.style.display = 'block';
         setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
     }
+}
+
+const MEAL_GACHA_BANK = {
+    keto: [
+        { q: "\u30b5\u30fc\u30e2\u30f3 \u30a2\u30dc\u30ab\u30c9", note: "\u30b1\u30c8\u4e2d\u3067\u3082\u4f7f\u3044\u3084\u3059\u3044\u8102\u8cea\u6e90\u3092\u8db3\u3057\u3084\u3059\u3044\u7d44\u307f\u5408\u308f\u305b\u3067\u3059\u3002" },
+        { q: "\u725b\u30b9\u30c6\u30fc\u30ad \u30d0\u30bf\u30fc", note: "\u7cd6\u8cea\u3092\u6291\u3048\u3064\u3064\u3001\u8102\u8cea\u3068\u305f\u3093\u3071\u304f\u8cea\u3092\u3057\u3063\u304b\u308a\u5165\u308c\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u9d8f\u3082\u3082 \u30c1\u30fc\u30ba\u713c\u304d", note: "\u4f4e\u7cd6\u8cea\u3067\u6e80\u8db3\u611f\u3092\u51fa\u3057\u3084\u3059\u3044\u30e1\u30cb\u30e5\u30fc\u3067\u3059\u3002" },
+        { q: "\u30b5\u30d0 \u5869\u713c\u304d", note: "\u9b5a\u306e\u8102\u3092\u4f7f\u3048\u3066\u3001\u7cd6\u8cea\u3092\u304b\u306a\u308a\u6291\u3048\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u5375 \u30c1\u30fc\u30ba \u30aa\u30e0\u30ec\u30c4", note: "\u624b\u8efd\u3067\u7cd6\u8cea\u304c\u5165\u308a\u306b\u304f\u304f\u3001\u671d\u3084\u8efd\u98df\u306b\u3082\u56de\u3057\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u304d\u306e\u3053 \u30d0\u30bf\u30fc\u7092\u3081", note: "\u4f4e\u7cd6\u8cea\u306e\u526f\u83dc\u3068\u3057\u3066\u8102\u8cea\u3092\u8db3\u3057\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u8c5a\u30d0\u30e9 \u30ad\u30e3\u30d9\u30c4 \u84b8\u3057", note: "\u91ce\u83dc\u3092\u5c11\u3057\u5165\u308c\u306a\u304c\u3089\u3001\u7cd6\u8cea\u3092\u6291\u3048\u3066\u8102\u8cea\u3092\u78ba\u4fdd\u3057\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u9d8f\u3082\u3082 \u5869\u713c\u304d", note: "\u5473\u4ed8\u3051\u3092\u30b7\u30f3\u30d7\u30eb\u306b\u3059\u308c\u3070\u7cd6\u8cea\u3092\u304b\u306a\u308a\u6291\u3048\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u30d6\u30ea \u7167\u308a\u713c\u304d \u7cd6\u8cea\u30aa\u30d5", note: "\u9b5a\u306e\u8102\u3092\u4f7f\u3044\u3084\u3059\u304f\u3001\u30bf\u30ec\u3092\u63a7\u3048\u308c\u3070\u30b1\u30c8\u4e2d\u306b\u3082\u5bc4\u305b\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u8c5a\u3057\u3083\u3076 \u30ec\u30bf\u30b9", note: "\u7cd6\u8cea\u3092\u5897\u3084\u3055\u305a\u3001\u8089\u3068\u91ce\u83dc\u3067\u98df\u3079\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u539a\u63da\u3052 \u30c1\u30fc\u30ba\u713c\u304d", note: "\u7cd6\u8cea\u3092\u6291\u3048\u3064\u3064\u3001\u98df\u3079\u3054\u305f\u3048\u3092\u51fa\u3057\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u30c4\u30ca \u30de\u30e8 \u5375", note: "\u624b\u8efd\u306b\u8102\u8cea\u3068\u305f\u3093\u3071\u304f\u8cea\u3092\u8db3\u3057\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+    ],
+    lowfat: [
+        { q: "\u9d8f\u3080\u306d \u84b8\u3057\u9d8f", note: "\u8102\u8cea\u3092\u6291\u3048\u3064\u3064\u3001\u305f\u3093\u3071\u304f\u8cea\u3092\u5897\u3084\u3057\u3084\u3059\u3044\u738b\u9053\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u3055\u3055\u307f \u6885\u3057\u305d", note: "\u8efd\u304f\u98df\u3079\u3084\u3059\u304f\u3001\u30ed\u30fc\u30d5\u30a1\u30c3\u30c8\u4e2d\u3067\u3082\u4f7f\u3044\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u767d\u8eab\u9b5a \u30db\u30a4\u30eb\u713c\u304d", note: "\u8102\u8cea\u3092\u6291\u3048\u306a\u304c\u3089\u3001\u9b5a\u3092\u5165\u308c\u305f\u3044\u65e5\u306b\u5411\u3044\u3066\u3044\u307e\u3059\u3002" },
+        { q: "\u8c5a\u30d2\u30ec \u751f\u59dc\u713c\u304d", note: "\u8102\u8cea\u3092\u63a7\u3048\u3081\u306b\u3057\u3064\u3064\u3001\u8089\u30e1\u30cb\u30e5\u30fc\u611f\u3092\u6b8b\u305b\u307e\u3059\u3002" },
+        { q: "\u30ce\u30f3\u30aa\u30a4\u30eb \u30c4\u30ca \u30b5\u30e9\u30c0", note: "\u3042\u3068\u5c11\u3057P\u3092\u8db3\u3057\u305f\u3044\u6642\u306b\u4f7f\u3044\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u9d8f\u3080\u306d \u7167\u308a\u713c\u304d", note: "\u76ae\u306a\u3057\u3067\u4f5c\u308c\u3070\u8102\u8cea\u3092\u6291\u3048\u306a\u304c\u3089\u6e80\u8db3\u611f\u3092\u51fa\u3057\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u9d8f\u3080\u306d \u30d4\u30ab\u30bf", note: "\u8102\u8cea\u3092\u6291\u3048\u3064\u3064\u3001\u5375\u3067\u98df\u3079\u3084\u3059\u3055\u3082\u8db3\u305b\u308b\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u3055\u3055\u307f \u30d5\u30e9\u30a4\u30d1\u30f3", note: "\u63da\u3052\u7269\u306b\u5bc4\u305b\u305a\u3001\u8efd\u3081\u306b\u305f\u3093\u3071\u304f\u8cea\u3092\u8db3\u3057\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u30bf\u30e9 \u91ce\u83dc\u84b8\u3057", note: "\u304b\u306a\u308a\u8efd\u3081\u306b\u6e08\u307e\u305b\u305f\u3044\u65e5\u306b\u4f7f\u3044\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u30a8\u30d3 \u30d6\u30ed\u30c3\u30b3\u30ea\u30fc", note: "\u8102\u8cea\u3092\u6291\u3048\u306a\u304c\u3089\u3001\u305f\u3093\u3071\u304f\u8cea\u3092\u8db3\u3057\u3084\u3059\u3044\u5b9a\u756a\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u30a4\u30ab \u5927\u6839 \u716e\u7269", note: "\u8102\u8cea\u3092\u6291\u3048\u3084\u3059\u304f\u3001\u548c\u98df\u5bc4\u308a\u3067\u7d9a\u3051\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u9d8f\u3080\u306d \u5357\u86ee\u6f2c\u3051", note: "\u6cb9\u3092\u63a7\u3048\u3081\u306b\u3059\u308c\u3070\u3001\u3055\u3063\u3071\u308a\u98df\u3079\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+    ],
+    protein: [
+        { q: "\u8c5a\u3057\u3083\u3076 \u30b5\u30e9\u30c0", note: "\u305f\u3093\u3071\u304f\u8cea\u3092\u8db3\u3057\u3064\u3064\u3001\u91cd\u304f\u306a\u308a\u3059\u304e\u306a\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u8c46\u8150 \u30cf\u30f3\u30d0\u30fc\u30b0", note: "\u3084\u3055\u3057\u3081\u306bP\u3092\u8db3\u3057\u3084\u3059\u304f\u3001\u98df\u3079\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u9bad \u30db\u30a4\u30eb\u713c\u304d", note: "\u305f\u3093\u3071\u304f\u8cea\u3068\u8102\u8cea\u306e\u30d0\u30e9\u30f3\u30b9\u304c\u53d6\u308a\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u9d8f\u3082\u3082 \u5869\u713c\u304d", note: "\u305f\u3093\u3071\u304f\u8cea\u3092\u8db3\u3057\u306a\u304c\u3089\u6e80\u8db3\u611f\u3082\u51fa\u3057\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u9d8f\u3080\u306d \u89aa\u5b50\u716e", note: "\u9d8f\u8089\u3068\u5375\u3067\u3001\u305f\u3093\u3071\u304f\u8cea\u3092\u307e\u3068\u3081\u3066\u8db3\u3057\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u725b\u8d64\u8eab \u30b9\u30c6\u30fc\u30ad", note: "\u8102\u8cea\u3092\u5897\u3084\u3057\u3059\u304e\u305a\u3001\u3057\u3063\u304b\u308aP\u3092\u5165\u308c\u305f\u3044\u65e5\u306b\u4f7f\u3044\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u30ab\u30c4\u30aa \u305f\u305f\u304d", note: "\u3055\u3063\u3071\u308a\u98df\u3079\u306a\u304c\u3089\u3001\u305f\u3093\u3071\u304f\u8cea\u3092\u8db3\u3057\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u307e\u3050\u308d \u5c71\u304b\u3051", note: "\u9b5a\u3067P\u3092\u8db3\u3057\u305f\u3044\u6642\u306b\u691c\u7d22\u3057\u3084\u3059\u3044\u5b9a\u756a\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u5375 \u8c46\u8150 \u3042\u3093\u304b\u3051", note: "\u8efd\u3081\u306b\u305f\u3093\u3071\u304f\u8cea\u3092\u8db3\u3057\u305f\u3044\u65e5\u306b\u4f7f\u3044\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u9d8f\u56e3\u5b50 \u30b9\u30fc\u30d7", note: "\u6c41\u7269\u306b\u3059\u308b\u3068\u91cf\u3092\u8abf\u6574\u3057\u3084\u3059\u304f\u3001P\u3082\u8db3\u3057\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u30b5\u30d0\u7f36 \u30ad\u30e3\u30d9\u30c4", note: "\u624b\u8efd\u306b\u9b5a\u306e\u305f\u3093\u3071\u304f\u8cea\u3092\u5165\u308c\u305f\u3044\u6642\u306b\u4f7f\u3044\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u7d0d\u8c46 \u30aa\u30e0\u30ec\u30c4", note: "\u671d\u98df\u3084\u8efd\u98df\u3067P\u3092\u8db3\u3057\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+    ],
+    carb: [
+        { q: "\u89aa\u5b50\u4e3c", note: "\u70ad\u6c34\u5316\u7269\u3068\u305f\u3093\u3071\u304f\u8cea\u3092\u307e\u3068\u3081\u3066\u5165\u308c\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u3046\u3069\u3093 \u5375", note: "C\u3092\u8db3\u3057\u306a\u304c\u3089\u8efd\u3081\u306b\u6e08\u307e\u305b\u305f\u3044\u6642\u306b\u4f7f\u3044\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u9bad \u304a\u306b\u304e\u308a", note: "\u70ad\u6c34\u5316\u7269\u3092\u8db3\u3057\u3064\u3064\u3001\u305f\u3093\u3071\u304f\u8cea\u3082\u5c11\u3057\u62fe\u3048\u308b\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u9d8f\u305d\u307c\u308d\u4e3c", note: "C\u3068P\u3092\u540c\u6642\u306b\u8db3\u3057\u3084\u3059\u3044\u3001\u8a18\u9332\u3082\u3057\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u8c5a\u4e3c", note: "\u3054\u98ef\u91cf\u3067C\u3092\u8abf\u6574\u3057\u3084\u3059\u304f\u3001\u6e80\u8db3\u611f\u3082\u51fa\u3057\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u9bad \u96d1\u708a", note: "\u8efd\u304fC\u3092\u8db3\u3057\u305f\u3044\u65e5\u306b\u4f7f\u3044\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u30c4\u30ca \u5375 \u3054\u98ef", note: "\u5bb6\u306b\u3042\u308b\u98df\u6750\u3067\u4f5c\u308a\u3084\u3059\u304f\u3001C\u3068P\u3092\u8db3\u3057\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u713c\u304d\u9ce5\u4e3c", note: "\u3054\u98ef\u91cf\u3092\u8abf\u6574\u3057\u306a\u304c\u3089\u3001\u305f\u3093\u3071\u304f\u8cea\u3082\u4e00\u7dd2\u306b\u5165\u308c\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u548c\u98a8 \u30d1\u30b9\u30bf \u30c4\u30ca", note: "C\u3092\u3057\u3063\u304b\u308a\u5165\u308c\u305f\u3044\u65e5\u306b\u691c\u7d22\u3057\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u3058\u3083\u304c\u3044\u3082 \u9d8f\u3080\u306d", note: "\u828b\u3067C\u3092\u8db3\u3057\u306a\u304c\u3089\u3001P\u3082\u62fe\u3044\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u30aa\u30fc\u30c8\u30df\u30fc\u30eb \u5375", note: "\u671d\u98df\u3084\u8efd\u98df\u3067C\u3092\u8abf\u6574\u3057\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u30b5\u30d0\u7f36 \u708a\u304d\u8fbc\u307f\u3054\u98ef", note: "C\u3068\u9b5a\u306e\u305f\u3093\u3071\u304f\u8cea\u3092\u307e\u3068\u3081\u3066\u5165\u308c\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+    ],
+    balanced: [
+        { q: "\u30b5\u30d0 \u5473\u564c\u716e", note: "\u9b5a\u3092\u5165\u308c\u305f\u3044\u65e5\u306b\u4f7f\u3044\u3084\u3059\u3044\u3001\u6e80\u8db3\u611f\u306e\u3042\u308b\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u8c5a\u3057\u3083\u3076 \u30b5\u30e9\u30c0", note: "\u91cd\u304f\u306a\u308a\u3059\u304e\u305a\u3001PFC\u3092\u6574\u3048\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u30ad\u30e0\u30c1\u934b", note: "\u5177\u6750\u3067\u8abf\u6574\u3057\u3084\u3059\u304f\u3001\u91ce\u83dc\u3068\u305f\u3093\u3071\u304f\u8cea\u3092\u307e\u3068\u3081\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u9d8f\u3082\u3082 \u7167\u308a\u713c\u304d", note: "\u98df\u4e8b\u306e\u6e80\u8db3\u611f\u3092\u51fa\u3057\u306a\u304c\u3089\u8a18\u9332\u3057\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u307e\u3050\u308d \u30a2\u30dc\u30ab\u30c9", note: "\u305f\u3093\u3071\u304f\u8cea\u3068\u8102\u8cea\u3092\u30d0\u30e9\u30f3\u30b9\u3088\u304f\u8db3\u3057\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u9bad \u3061\u3083\u3093\u3061\u3083\u3093\u713c\u304d", note: "\u9b5a\u3068\u91ce\u83dc\u3092\u307e\u3068\u3081\u3084\u3059\u304f\u3001\u5bb6\u5ead\u6599\u7406\u3068\u3057\u3066\u691c\u7d22\u3057\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u9d8f\u8089 \u30c8\u30de\u30c8\u716e", note: "\u91ce\u83dc\u3082\u5165\u308c\u3084\u3059\u304f\u3001PFC\u3092\u5927\u304d\u304f\u5d29\u3057\u306b\u304f\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u8c5a\u3053\u307e \u91ce\u83dc\u7092\u3081", note: "\u5bb6\u306b\u3042\u308b\u98df\u6750\u3067\u4f5c\u308a\u3084\u3059\u304f\u3001\u91cf\u306e\u8abf\u6574\u3082\u3057\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u8089\u8c46\u8150", note: "\u305f\u3093\u3071\u304f\u8cea\u3092\u5165\u308c\u3064\u3064\u3001\u98df\u4e8b\u3068\u3057\u3066\u6e80\u8db3\u3057\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u9d8f\u3064\u304f\u306d", note: "\u98df\u3079\u3084\u3059\u304f\u3001\u4e3b\u83dc\u3068\u3057\u3066\u4f7f\u3044\u3084\u3059\u3044\u5b9a\u756a\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u30d6\u30ea \u5927\u6839", note: "\u9b5a\u30e1\u30cb\u30e5\u30fc\u306e\u30d0\u30ea\u30a8\u30fc\u30b7\u30e7\u30f3\u3068\u3057\u3066\u4f7f\u3044\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+        { q: "\u725b\u8089 \u30d4\u30fc\u30de\u30f3 \u7092\u3081", note: "\u8089\u3068\u91ce\u83dc\u3092\u307e\u3068\u3081\u3084\u3059\u304f\u3001\u3054\u98ef\u91cf\u3067C\u3082\u8abf\u6574\u3057\u3084\u3059\u3044\u5019\u88dc\u3067\u3059\u3002" },
+    ]
+};
+
+let mealGachaLastKey = "";
+let mealGachaLastIndex = -1;
+let mealGachaDecks = {};
+let mealGachaRecentTypes = [];
+
+function rollMealGacha() {
+    const picked = pickMealGachaItem();
+    const box = document.getElementById('meal-gacha-result');
+    if (!box || !picked) return;
+
+    box.style.display = 'block';
+    box.innerHTML = `
+        <div class="meal-gacha-card-head">
+            <div>
+                <div class="meal-gacha-kicker">今日の献立提案</div>
+                <div class="meal-gacha-label">${escapeHtml(picked.label)}</div>
+            </div>
+            <button class="meal-gacha-close" onclick="closeMealGachaResult()" type="button">閉じる</button>
+        </div>
+        <div class="meal-gacha-dish">
+            <div class="meal-gacha-plate">🍽️</div>
+            <div>
+                <div class="meal-gacha-title">${escapeHtml(picked.item.q)}</div>
+                <div class="meal-gacha-note">${escapeHtml(picked.item.note)}</div>
+            </div>
+        </div>
+        <div class="meal-gacha-links" aria-label="レシピ検索リンク">
+            <button class="meal-gacha-delish" onclick="openMealGachaLink('${escapeForAttr(picked.item.q)}','delish')">デリッシュキッチン</button>
+            <button class="meal-gacha-youtube" onclick="openMealGachaLink('${escapeForAttr(picked.item.q)}','youtube')">YouTube</button>
+            <button class="meal-gacha-reroll" onclick="rollMealGacha()">別の候補にする</button>
+        </div>
+    `;
+    setTimeout(() => box.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+}
+
+function closeMealGachaResult() {
+    const box = document.getElementById('meal-gacha-result');
+    if (!box) return;
+    box.style.display = 'none';
+    box.innerHTML = '';
+}
+
+function pickMealGachaItem() {
+    const isKeto = TG && TG.mode === "keto";
+    let key = isKeto ? "keto" : "all";
+    let label = "今日のおすすめ";
+    let bank;
+
+    if (isKeto) {
+        bank = MEAL_GACHA_BANK.keto;
+        label = "ケト向けおすすめ";
+    } else {
+        bank = [
+            ...MEAL_GACHA_BANK.lowfat,
+            ...MEAL_GACHA_BANK.protein,
+            ...MEAL_GACHA_BANK.carb,
+            ...MEAL_GACHA_BANK.balanced
+        ];
+    }
+
+    if (!mealGachaDecks[key] || mealGachaDecks[key].length === 0) {
+        mealGachaDecks[key] = shuffleMealGachaDeck(bank.length);
+    }
+
+    let deckPickIndex = 0;
+    const avoidTypes = mealGachaRecentTypes.slice(-3);
+    for (let i = 0; i < mealGachaDecks[key].length; i++) {
+        const candidateType = getMealGachaType(bank[mealGachaDecks[key][i]].q);
+        if (!avoidTypes.includes(candidateType)) {
+            deckPickIndex = i;
+            break;
+        }
+    }
+
+    const idx = mealGachaDecks[key].splice(deckPickIndex, 1)[0];
+    const pickedType = getMealGachaType(bank[idx].q);
+    mealGachaLastKey = key;
+    mealGachaLastIndex = idx;
+    mealGachaRecentTypes.push(pickedType);
+    if (mealGachaRecentTypes.length > 6) mealGachaRecentTypes.shift();
+    return { item: bank[idx], label };
+}
+
+function shuffleMealGachaDeck(length) {
+    const deck = Array.from({ length }, (_, i) => i);
+    for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+    return deck;
+}
+
+function getMealGachaType(query) {
+    if (/鶏|ささみ|親子|焼き鳥/.test(query)) return "chicken";
+    if (/豚/.test(query)) return "pork";
+    if (/牛/.test(query)) return "beef";
+    if (/サバ|鮭|タラ|ブリ|まぐろ|カツオ|白身魚|魚/.test(query)) return "fish";
+    if (/エビ|イカ/.test(query)) return "seafood";
+    if (/豆腐|厚揚げ|納豆/.test(query)) return "soy";
+    if (/卵|オムレツ/.test(query)) return "egg";
+    if (/ツナ/.test(query)) return "tuna";
+    return "other";
+}
+
+function getCurrentMacroState() {
+    const total = { P: 0, F: 0, C: 0 };
+    if (typeof lst !== 'undefined') {
+        lst.forEach(x => {
+            total.P += x.P || 0;
+            total.F += x.F || 0;
+            total.C += x.C || 0;
+        });
+    }
+    return {
+        pRatio: TG && TG.p ? total.P / TG.p : 0,
+        fRatio: TG && TG.f ? total.F / TG.f : 0,
+        cRatio: TG && TG.c ? total.C / TG.c : 0
+    };
+}
+
+function openMealGachaLink(query, type) {
+    if (type === 'youtube') {
+        window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(query + ' レシピ')}`, '_blank');
+    } else {
+        window.open(`https://delishkitchen.tv/search?q=${encodeURIComponent(query)}`, '_blank');
+    }
+}
+
+function escapeForAttr(text) {
+    return String(text).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+}
+
+function escapeHtml(text) {
+    return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
 // ▼ ホームに戻って全て閉じる関数 (新規追加)

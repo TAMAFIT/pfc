@@ -4,6 +4,15 @@ const gasUrl = "https://script.google.com/macros/s/AKfycbxfD_oYqqac1rG0U1Po9cWiH
 let recognition;
 let isRecording = false;
 let activeMicTarget = null; // 'voice' or 'chat'
+let speechFinalizeTimer = null;
+let speechLatestText = "";
+let speechHadResult = false;
+let speechResultCallback = null;
+let voiceAutoSend = localStorage.getItem('tf_voice_auto_send') !== 'false';
+let pendingDeleteAllToday = false;
+let lastTamaChatSendText = "";
+let lastTamaChatSendAt = 0;
+window.clearPendingDeleteAllToday = function () { pendingDeleteAllToday = false; };
 
 // ▼▼▼ トースト通知 ▼▼▼
 function showToast(msg) {
@@ -40,7 +49,16 @@ window.openChatGPTAndCopy = function (foodName) {
 };
 
 // ▼▼▼ マイク制御（トグル挙動・状態リセット） ▼▼▼
-const forceStopMic = () => {
+const forceStopMic = (preserveSpeech = false) => {
+    if (speechFinalizeTimer) {
+        clearTimeout(speechFinalizeTimer);
+        speechFinalizeTimer = null;
+    }
+    if (!preserveSpeech) {
+        speechLatestText = "";
+        speechHadResult = false;
+        speechResultCallback = null;
+    }
     if (isRecording) {
         isRecording = false;
         const vMicBtn = document.getElementById('v-main-mic');
@@ -50,7 +68,7 @@ const forceStopMic = () => {
         const cInputEl = document.getElementById('chat-input');
 
         if (vMicBtn) vMicBtn.classList.remove('listening');
-        if (vStatusText) vStatusText.innerText = "マイクOFF";
+        if (vStatusText) vStatusText.innerText = preserveSpeech ? "送信待ち" : "マイクOFF";
         if (vInputEl) vInputEl.placeholder = "文字でも記録できます";
 
         if (cMicBtn) cMicBtn.classList.remove('recording');
@@ -60,8 +78,25 @@ const forceStopMic = () => {
     }
 };
 
+function syncVoiceAutoSendUI() {
+    const toggle = document.getElementById('v-auto-send-toggle');
+    const text = document.querySelector('.v-auto-text');
+    if (toggle) toggle.checked = voiceAutoSend;
+    if (text) text.innerText = voiceAutoSend ? "自動送信" : "手動送信";
+}
+
+window.toggleVoiceAutoSend = function () {
+    const toggle = document.getElementById('v-auto-send-toggle');
+    voiceAutoSend = toggle ? toggle.checked : voiceAutoSend;
+    localStorage.setItem('tf_voice_auto_send', String(voiceAutoSend));
+    syncVoiceAutoSendUI();
+};
+
+document.addEventListener('DOMContentLoaded', syncVoiceAutoSendUI);
+
 document.addEventListener('visibilitychange', () => { if (document.hidden) forceStopMic(); });
-window.addEventListener('pagehide', forceStopMic); window.addEventListener('blur', forceStopMic);
+window.addEventListener('pagehide', () => forceStopMic());
+window.addEventListener('blur', () => forceStopMic());
 
 function toggleMic() {
     activeMicTarget = 'chat';
@@ -77,6 +112,7 @@ window.toggleVoiceMic = function () {
     activeMicTarget = 'voice';
     const vMicBtn = document.getElementById('v-main-mic'); const vStatusText = document.getElementById('v-status-text'); const vInputEl = document.getElementById('v-chat-input');
     if (isRecording) { forceStopMic(); return; }
+    syncVoiceAutoSendUI();
     startRecognition(
         () => { vMicBtn.classList.add('listening'); vStatusText.innerText = "マイクON"; vInputEl.value = ''; },
         (text) => { vInputEl.value = text; sendVoiceChat(); }
@@ -87,16 +123,68 @@ function startRecognition(onStartCallback, onResultCallback) {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) { showToast("お使いのブラウザは音声入力非対応だたま！"); return; }
 
-    recognition = new SpeechRecognition(); recognition.lang = 'ja-JP'; recognition.continuous = false; recognition.interimResults = false;
+    recognition = new SpeechRecognition(); recognition.lang = 'ja-JP'; recognition.continuous = true; recognition.interimResults = true;
+    speechLatestText = "";
+    speechHadResult = false;
+    speechResultCallback = onResultCallback;
+
+    const scheduleFinalize = () => {
+        if (activeMicTarget === 'voice' && !voiceAutoSend) {
+            const vStatusText = document.getElementById('v-status-text');
+            if (vStatusText && speechLatestText.trim()) vStatusText.innerText = "送信待ち";
+            return;
+        }
+        if (speechFinalizeTimer) clearTimeout(speechFinalizeTimer);
+        speechFinalizeTimer = setTimeout(() => {
+            const txt = speechLatestText.trim();
+            forceStopMic();
+            if (txt) onResultCallback(txt);
+        }, 2200);
+    };
 
     recognition.onstart = () => { isRecording = true; onStartCallback(); };
-    recognition.onresult = (event) => { if (!isRecording) return; const txt = event.results[0][0].transcript; forceStopMic(); onResultCallback(txt); };
+    recognition.onresult = (event) => {
+        if (!isRecording) return;
+        let txt = "";
+        for (let i = 0; i < event.results.length; i++) {
+            txt += event.results[i][0].transcript;
+        }
+        speechLatestText = txt;
+        speechHadResult = true;
+        if (activeMicTarget === 'voice') {
+            const vInputEl = document.getElementById('v-chat-input');
+            if (vInputEl) vInputEl.value = txt;
+        } else if (activeMicTarget === 'chat') {
+            const cInputEl = document.getElementById('chat-input');
+            if (cInputEl) cInputEl.value = txt;
+        }
+        scheduleFinalize();
+    };
     recognition.onerror = (event) => {
         forceStopMic();
         if (event.error === 'not-allowed') showToast("マイクの許可がないみたいだたま！\niPhoneのホーム画面からだと使えないことがあるからSafariで開いてたま！");
     };
-    recognition.onend = () => { if (isRecording) { forceStopMic(); } };
+    recognition.onend = () => {
+        if (!isRecording) return;
+        if (speechHadResult && activeMicTarget === 'voice' && !voiceAutoSend) {
+            const vStatusText = document.getElementById('v-status-text');
+            if (vStatusText) vStatusText.innerText = "送信待ち";
+            forceStopMic(true);
+        } else if (speechHadResult) {
+            scheduleFinalize();
+        } else {
+            forceStopMic();
+        }
+    };
     recognition.start();
+}
+
+function finalizeSpeechNow() {
+    const txt = (speechLatestText || document.getElementById('v-chat-input')?.value || "").trim();
+    const cb = speechResultCallback;
+    forceStopMic();
+    if (txt && cb) cb(txt);
+    else if (txt && typeof sendVoiceChat === 'function') sendVoiceChat();
 }
 
 // ▼▼▼ チャット表示制御 ▼▼▼
@@ -178,6 +266,11 @@ function removeMsg(id) {
 
 async function sendTamaChat() {
     const inputEl = document.getElementById('chat-input'); const text = inputEl.value.trim(); if (!text) return;
+    if (isRecording && activeMicTarget === 'chat') forceStopMic();
+    const now = Date.now();
+    if (text === lastTamaChatSendText && now - lastTamaChatSendAt < 2500) { inputEl.value = ''; return; }
+    lastTamaChatSendText = text;
+    lastTamaChatSendAt = now;
     addChatMsg('user', text); inputEl.value = ''; inputEl.disabled = true; const loadingId = addChatMsg('bot', 'たまちゃん考え中...');
     await processAIChat(text, loadingId, false);
     inputEl.disabled = false;
@@ -191,10 +284,14 @@ window.sendVoiceChat = async function () {
 
     addChatMsg('user', text); const loadingId = addChatMsg('bot', 'データ処理中...');
 
-    await processAIChat(text, loadingId, true);
-
-    vStatusText.innerText = "マイクOFF";
-    inputEl.disabled = false;
+    try {
+        if (!tryHandleLocalVoiceMealLog(text, loadingId)) {
+            await processAIChat(text, loadingId, true);
+        }
+    } finally {
+        vStatusText.innerText = "マイクOFF";
+        inputEl.disabled = false;
+    }
 }
 
 // ▼▼▼ 共通ヘルパー関数 ▼▼▼
@@ -202,14 +299,27 @@ window.sendVoiceChat = async function () {
 // [DATA]・[REPLACE]共通のPFCパース処理
 function parsePFCFromRaw(dRaw) {
     let parts = dRaw.split(/,|、/).map(p => p.trim());
+    let firstNumIdx = parts.findIndex((part, idx) => idx > 0 && /^[-+]?\d+(?:\.\d+)?/.test(part));
     let numParts = [];
-    while (parts.length > 0) {
-        let lastPart = parts[parts.length - 1];
-        let val = parseFloat(lastPart.replace(/[^\d.]/g, ""));
-        let nonDigits = lastPart.replace(/[\d.\s]/g, "").toLowerCase();
-        let isFoodName = nonDigits.length > 0 && !/^(g|mg|ml|kcal|倍|個|人前)$/.test(nonDigits);
-        if (!isNaN(val) && /[0-9]/.test(lastPart) && !isFoodName) { numParts.unshift(val); parts.pop(); } else { break; }
+
+    if (firstNumIdx >= 0) {
+        const nameParts = parts.slice(0, firstNumIdx);
+        for (const part of parts.slice(firstNumIdx)) {
+            const match = part.match(/[-+]?\d+(?:\.\d+)?/);
+            if (match) numParts.push(parseFloat(match[0]));
+            if (numParts.length >= 5) break;
+        }
+        parts = nameParts;
+    } else {
+        while (parts.length > 0) {
+            let lastPart = parts[parts.length - 1];
+            let val = parseFloat(lastPart.replace(/[^\d.]/g, ""));
+            let nonDigits = lastPart.replace(/[\d.\s]/g, "").toLowerCase();
+            let isFoodName = nonDigits.length > 0 && !/^(g|mg|ml|kcal|倍|個|人前)$/.test(nonDigits);
+            if (!isNaN(val) && /[0-9]/.test(lastPart) && !isFoodName) { numParts.unshift(val); parts.pop(); } else { break; }
+        }
     }
+
     if (numParts.length < 3) return null;
     let name = parts.join(",").replace(/^["']|["']$/g, "").trim() || "不明な食事";
     let pBase = numParts[0] || 0, fBase = numParts[1] || 0, cBase = numParts[2] || 0;
@@ -221,15 +331,379 @@ function parsePFCFromRaw(dRaw) {
     return { N: name, P: p, F: f, C: c, A: a, Cal: cal };
 }
 
+function normalizeFoodText(str) {
+    return toHira(String(str || ""))
+        .replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0))
+        .replace(/ｇ/g, "g")
+        .toLowerCase();
+}
+
+function findDbFoodForAIName(foodName, rawText = "") {
+    if (typeof DB === 'undefined') return null;
+    const target = normalizeFoodText(`${foodName} ${rawText}`).replace(/[()（）0-9.gｇグラムぐらむ\s]/g, "");
+
+    if (/(白米|ごはん|ご飯|米|こめ|ライス)/.test(target)) return DB.find(x => x[1] === "白米");
+    if (/(鶏むね|鶏胸|鳥胸|胸肉|むね肉|とりむね|チキン)/.test(target)) return DB.find(x => x[1] === "鶏むね(皮なし)");
+
+    return DB.find(x => {
+        const name = normalizeFoodText(x[1]).replace(/[()（）0-9.g\s]/g, "");
+        const keys = String(x[2] || "").split(" ").map(k => normalizeFoodText(k)).filter(Boolean);
+        return target.includes(name) || keys.some(k => k.length >= 2 && target.includes(k));
+    }) || null;
+}
+
+function getDbFoodPattern(dbItem) {
+    const name = dbItem ? dbItem[1] : "";
+    if (name === "白米") return /(白米|ごはん|ご飯|米|こめ|ライス)/;
+    if (name.includes("鶏むね")) return /(鶏むね|鶏胸|鳥胸|胸肉|むね肉|とりむね|チキン)/;
+    const keys = [name, ...(String(dbItem?.[2] || "").split(" "))].map(k => normalizeFoodText(k)).filter(k => k.length >= 2);
+    return new RegExp(keys.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"));
+}
+
+function extractExplicitGramForDbFood(userText, dbItem) {
+    if (!dbItem || !String(dbItem[3]).includes("g")) return null;
+    const text = normalizeFoodText(userText).replace(/グラム|ぐらむ/g, "g");
+    const pattern = getDbFoodPattern(dbItem);
+    const clauses = text.split(/(?:と|、|,|。|\n)/).map(x => x.trim()).filter(Boolean);
+
+    for (const clause of clauses) {
+        const gramMatch = clause.match(/([0-9]+(?:\.[0-9]+)?)\s*g/);
+        if (gramMatch && pattern.test(clause)) return parseFloat(gramMatch[1]);
+    }
+
+    const foodMatch = text.match(pattern);
+    if (foodMatch) {
+        const after = text.slice(foodMatch.index, foodMatch.index + 24);
+        const gramAfter = after.match(/([0-9]+(?:\.[0-9]+)?)\s*g/);
+        if (gramAfter) return parseFloat(gramAfter[1]);
+    }
+
+    return null;
+}
+
+function applyExplicitUserGramAmount(food, userText, rawDataText = "") {
+    const dbItem = findDbFoodForAIName(food.N, rawDataText);
+    const grams = extractExplicitGramForDbFood(userText, dbItem);
+    if (!dbItem || !grams || grams <= 0) return food;
+
+    const baseGram = parseFloat(String(dbItem[3]).replace(/[^\d.]/g, "")) || 100;
+    const mul = grams / baseGram;
+    const p = dbItem[4] * mul;
+    const f = dbItem[5] * mul;
+    const c = dbItem[6] * mul;
+    const unitPfcCal = (dbItem[4] * 4) + (dbItem[5] * 9) + (dbItem[6] * 4);
+    const aBase = dbItem[7] > unitPfcCal + 10 ? Math.max(0, (dbItem[7] - unitPfcCal) / 7) : 0;
+    const a = aBase * mul;
+    const cal = Math.round((p * 4) + (f * 9) + (c * 4) + (a * 7));
+
+    return {
+        ...food,
+        N: `${dbItem[1]}(${grams}g)`,
+        P: p,
+        F: f,
+        C: c,
+        A: a,
+        Cal: cal
+    };
+}
+
 // [UNKNOWN]時の検索ボタンHTML生成
 function buildSearchButtons(foodName) {
     return `<br><br><div style="display:flex; gap:10px; width:100%; margin-top:8px;"><div onclick="openChatGPTAndCopy('${foodName}')" style="cursor:pointer; flex:1; background-color:#10A37F; color:#FFFFFF; padding:12px 0; border-radius:10px; font-weight:600; font-size:13px; text-align:center; box-shadow:0 2px 5px rgba(0,0,0,0.15); display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.4;"><div style="display:flex; align-items:center; gap:6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M22.28 10.51a6.6 6.6 0 0 0-1.63-7.1 6.62 6.62 0 0 0-7.04-1.6 6.59 6.59 0 0 0-8.91 3.52 6.61 6.61 0 0 0-1.57 7.15 6.6 6.6 0 0 0 1.63 7.09 6.61 6.61 0 0 0 7.03 1.6 6.59 6.59 0 0 0 8.92-3.53 6.62 6.62 0 0 0 1.57-7.13zm-8.87 9.87a4.57 4.57 0 0 1-3.23-1.32l.24-.14 4.54-2.62a1.05 1.05 0 0 0 .52-.91v-5.26l1.79 1.03a4.59 4.59 0 0 1 1.7 5.91 4.58 4.58 0 0 1-5.56 3.31zm-7.66-2.5a4.59 4.59 0 0 1-1.3-3.28l.2.16 4.55 2.63a1.04 1.04 0 0 0 1.05 0l4.55-2.63-.9-1.55-4.54 2.62a2.66 2.66 0 0 1-2.66 0L4.1 11.66a4.58 4.58 0 0 1 1.65-5.38zm7.5-12.78a4.58 4.58 0 0 1 3.23 1.33l-.24.14-4.54 2.62a1.04 1.04 0 0 0-.52.9v5.27l-1.8-1.04A4.59 4.59 0 0 1 8.2 8.52a4.58 4.58 0 0 1 5.06-3.41zm1.25 5.86-1.8-1.04v-3.1a4.58 4.58 0 0 1 6.85-2.1L16.2 6.5v.01l-4.54 2.62a2.66 2.66 0 0 1-2.67 0l-2.6-1.5 2.6-4.5a4.59 4.59 0 0 1 5.51-1.6zm4.6 7.42a4.59 4.59 0 0 1 1.3 3.28l-.2-.16-4.55-2.63a1.04 1.04 0 0 0-1.05 0l-4.54 2.63.9 1.55 4.54-2.62a2.66 2.66 0 0 1 2.66 0l2.58 1.5A4.58 4.58 0 0 1 19.1 18.4zM12 14.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg><span>ChatGPT</span></div><span style="font-size:9.5px; font-weight:400; margin-top:3px; opacity:0.9;">(質問を自動コピー)</span></div><a href="https://www.google.com/search?q=${encodeURIComponent(foodName + ' カロリー PFC')}" target="_blank" style="flex:1; background-color:#FFFFFF; color:#3C4043; border:1px solid #DADCE0; padding:12px 0; border-radius:10px; font-weight:600; font-size:13px; text-decoration:none; text-align:center; box-shadow:0 2px 5px rgba(0,0,0,0.05); display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.4;"><div style="display:flex; align-items:center; gap:6px;"><svg width="16" height="16" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg><span>Google</span></div><span style="font-size:9.5px; font-weight:400; margin-top:3px; color:#5F6368;">(自分で調べる)</span></a></div>`;
+}
+
+function hasMutationIntent(text) {
+    return /(記録|登録|追加|食べた|食べました|飲んだ|飲みました|消して|削除|取り消|修正|訂正|変更|間違え|間違い|やっぱり|だった|じゃなくて)/.test(text);
+}
+
+const LAST_AI_ADDED_IDS_KEY = 'tf_last_ai_added_ids';
+const AI_REQUEST_TIMEOUT_MS = 45000;
+
+function getLastAIAddedIds() {
+    try {
+        const ids = JSON.parse(localStorage.getItem(LAST_AI_ADDED_IDS_KEY) || "[]");
+        return Array.isArray(ids) ? ids.map(Number).filter(Boolean) : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function setLastAIAddedIds(ids) {
+    localStorage.setItem(LAST_AI_ADDED_IDS_KEY, JSON.stringify((ids || []).map(Number).filter(Boolean)));
+}
+
+function escapeRegExp(str) {
+    return String(str || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function parseBaseUnitAmount(unitText) {
+    const unit = String(unitText || "");
+    const n = parseFloat(unit.replace(/[^\d.]/g, "")) || 1;
+    if (/g|ｇ|グラム|ぐらむ/i.test(unit)) return { amount: n, unit: "g" };
+    if (/杯/.test(unit)) return { amount: n, unit: "杯" };
+    if (/p|P|パック/.test(unit)) return { amount: n, unit: "パック" };
+    return { amount: n, unit: "個" };
+}
+
+function getLocalVoiceFoodRules() {
+    return [
+        { dbName: "鶏むね(皮なし)", aliases: ["鶏むね", "鶏胸肉", "鶏胸", "とりむね", "胸肉", "チキン"] },
+        { dbName: "白米", aliases: ["白米", "ごはん", "ご飯", "ライス", "米"] },
+        { dbName: "納豆", aliases: ["納豆", "なっとう"] },
+        { dbName: "味噌汁(豆腐わかめ)", aliases: ["味噌汁", "みそ汁", "みそしる"] },
+        { dbName: "ブロッコリー", aliases: ["ブロッコリー", "ぶろっこりー"] }
+    ];
+}
+
+function parseLocalVoiceMealFoods(text) {
+    if (typeof DB === 'undefined') return [];
+    const source = String(text || "").replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+    const foods = [];
+
+    getLocalVoiceFoodRules().forEach(rule => {
+        const db = DB.find(x => x[1] === rule.dbName);
+        if (!db) return;
+        const aliases = rule.aliases.slice().sort((a, b) => b.length - a.length);
+        const aliasPattern = aliases.map(escapeRegExp).join("|");
+        const match = source.match(new RegExp(`(${aliasPattern})\\s*([0-9]+(?:\\.[0-9]+)?)?\\s*(g|ｇ|グラム|ぐらむ|杯|パック|P|p|個)?`, "i"));
+        if (!match) return;
+
+        const base = parseBaseUnitAmount(db[3]);
+        const rawNum = match[2] ? parseFloat(match[2]) : null;
+        const rawUnit = match[3] || base.unit;
+        let multiplier = 1;
+        let displayAmount = db[3];
+
+        if (rawNum !== null) {
+            if (/g|ｇ|グラム|ぐらむ/i.test(rawUnit) && base.unit === "g") {
+                multiplier = rawNum / base.amount;
+                displayAmount = `${rawNum}g`;
+            } else {
+                multiplier = rawNum / base.amount;
+                displayAmount = `${rawNum}${base.unit}`;
+            }
+        }
+
+        const p = db[4] * multiplier;
+        const f = db[5] * multiplier;
+        const c = db[6] * multiplier;
+        const cal = Math.round(db[7] * multiplier);
+        foods.push({
+            N: `${db[1]}(${displayAmount})`,
+            P: p,
+            F: f,
+            C: c,
+            A: 0,
+            Cal: cal,
+            time: typeof getAutoTime === 'function' ? getAutoTime() : "昼"
+        });
+    });
+
+    return foods;
+}
+
+function tryHandleLocalVoiceMealLog(text, loadingId) {
+    const foods = parseLocalVoiceMealFoods(text);
+    if (foods.length === 0) return false;
+    const newlyAddedIds = [];
+    foods.forEach((food, idx) => {
+        const newId = Date.now() + idx + Math.floor(Math.random() * 1000);
+        lst.push({ id: newId, N: "🤖 " + food.N, P: food.P, F: food.F, C: food.C, A: food.A, Cal: food.Cal, U: "AI", time: food.time });
+        newlyAddedIds.push(newId);
+    });
+    localStorage.setItem('tf_dat', JSON.stringify(lst));
+    if (typeof ren === 'function') ren();
+    if (typeof upd === 'function') upd();
+    setLastAIAddedIds(newlyAddedIds);
+    removeMsg(loadingId);
+    const names = foods.map(f => f.N).join("、");
+    const reply = `${names}を登録しました。※分量が違う場合は教えてください。`;
+    addChatMsg('bot', reply, true);
+    chatHistory.push({ role: 'model', text: reply });
+    if (chatHistory.length > 6) chatHistory.shift();
+    return true;
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = AI_REQUEST_TIMEOUT_MS) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        return await fetch(url, { ...options, signal: controller.signal });
+    } finally {
+        clearTimeout(timeoutId);
+    }
+}
+
+function isRecentBatchDeleteIntent(text) {
+    return /(今の全部|いまの全部|さっきの全部|直前の全部|今登録した.*全部|今入れた.*全部|今のやつ.*全部|さっきのやつ.*全部|今の.*消して|さっきの.*消して|直前の.*消して)/.test(text);
+}
+
+function isAllTodayDeleteIntent(text) {
+    return /(今日|本日).*(全部|すべて|全て).*(消して|削除|取り消)|^(全部|すべて|全て).*(消して|削除)$/.test(text);
+}
+
+function normalizeDeleteText(str) {
+    return toHira(String(str || ""))
+        .replace(/^🤖\s*/, "")
+        .replace(/[()\[\]（）【】\s]/g, "")
+        .toLowerCase();
+}
+
+function getStructuredDeleteIds(text) {
+    const ids = [];
+    const normalized = normalizeDeleteText(text);
+    const mealMatch = text.match(/(朝|昼|晩|間食|朝食|昼食|夕食|夜|夜食).*(全部|すべて|全て|消して|削除|取り消)/);
+    if (mealMatch) {
+        let meal = mealMatch[1].replace("食", "");
+        if (meal === "夜" || meal === "夜食") meal = "晩";
+        lst.forEach(item => { if (item.time === meal) ids.push(Number(item.id)); });
+    }
+
+    if (/AI|ａｉ|人工知能|自動/.test(text) && /(全部|すべて|全て|消して|削除|取り消)/.test(text)) {
+        lst.forEach(item => {
+            if (String(item.N || "").includes("🤖") || String(item.U || "") === "AI") ids.push(Number(item.id));
+        });
+    }
+
+    if (/(全部|すべて|全て).*(消して|削除|取り消)|消して|削除|取り消/.test(text)) {
+        lst.forEach(item => {
+            const name = normalizeDeleteText(item.N);
+            const simpleName = name.replace(/[0-9０-９.]+g?|グラム|ぐらむ|個|玉|杯/g, "");
+            if (simpleName.length >= 2 && normalized.includes(simpleName)) ids.push(Number(item.id));
+        });
+    }
+
+    return [...new Set(ids)].filter(Boolean);
+}
+
+function getLatestLogClusterIds() {
+    if (!Array.isArray(lst) || lst.length === 0) return [];
+    const items = lst
+        .filter(x => Number.isFinite(Number(x.id)))
+        .slice()
+        .sort((a, b) => Number(b.id) - Number(a.id));
+    if (items.length === 0) return [];
+
+    const newestId = Number(items[0].id);
+    return items
+        .filter(x => newestId - Number(x.id) <= 5000)
+        .map(x => Number(x.id));
+}
+
+function tryHandleRecentBatchDelete(text, loadingId) {
+    if (!isRecentBatchDeleteIntent(text)) return false;
+
+    let targetIds = getLastAIAddedIds().filter(id => lst.some(item => Number(item.id) === Number(id)));
+    if (targetIds.length === 0) targetIds = getLatestLogClusterIds();
+    if (targetIds.length === 0) return false;
+
+    const deletedCount = typeof deleteLogIds === 'function'
+        ? deleteLogIds(targetIds, "recent-ai", true)
+        : 0;
+    if (deletedCount <= 0) return false;
+
+    setLastAIAddedIds([]);
+    removeMsg(loadingId);
+    const reply = `${deletedCount}件の記録を削除しました。`;
+    addChatMsg('bot', reply, true);
+    chatHistory.push({ role: 'model', text: reply });
+    if (chatHistory.length > 6) chatHistory.shift();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return true;
+}
+
+function tryHandleStructuredDelete(text, loadingId) {
+    if (isAllTodayDeleteIntent(text)) {
+        removeMsg(loadingId);
+        pendingDeleteAllToday = true;
+        if (typeof requestDeleteAllTodayConfirm === 'function') {
+            requestDeleteAllTodayConfirm();
+            addChatMsg('bot', "今日の記録をすべて削除する確認を表示しました。", true);
+        } else {
+            addChatMsg('bot', "今日の記録をすべて削除する場合は、画面から確認してください。", true);
+        }
+        return true;
+    }
+
+    const ids = getStructuredDeleteIds(text);
+    if (ids.length === 0) return false;
+    const deletedCount = typeof deleteLogIds === 'function'
+        ? deleteLogIds(ids, "voice-rule", true)
+        : 0;
+    if (deletedCount <= 0) return false;
+
+    removeMsg(loadingId);
+    const reply = `${deletedCount}件の記録を削除しました。`;
+    addChatMsg('bot', reply, true);
+    chatHistory.push({ role: 'model', text: reply });
+    if (chatHistory.length > 6) chatHistory.shift();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return true;
+}
+
+function tryHandlePendingDeleteAllAnswer(text, loadingId) {
+    if (!pendingDeleteAllToday) return false;
+    if (/^(はい|うん|お願いします|削除|消して|実行|ok|OK|オーケー)/.test(text.trim())) {
+        pendingDeleteAllToday = false;
+        removeMsg(loadingId);
+        if (typeof confirmDeleteAllToday === 'function') confirmDeleteAllToday();
+        addChatMsg('bot', "今日の記録を削除しました。", true);
+        return true;
+    }
+    if (/^(いいえ|いや|キャンセル|やめ|やめて|中止|戻る)/.test(text.trim())) {
+        pendingDeleteAllToday = false;
+        removeMsg(loadingId);
+        if (typeof closeDeleteAllConfirm === 'function') closeDeleteAllConfirm();
+        addChatMsg('bot', "削除をキャンセルしました。", true);
+        return true;
+    }
+    return false;
+}
+
+function hasRecipeIntent(text) {
+    return /(何食べ|なに食べ|何を食べ|おすすめ|オススメ|提案|レシピ|作り方|メニュー|献立|食べよう|食べれば|食べたらいい)/.test(text);
+}
+
+function looksLikeLeakedReasoning(text) {
+    if (!text) return false;
+    return /\b(User input|Context|System state|Current meal record list|Rule for|Report text|Command|Japanese response|Check rules|Result)\b/i.test(text)
+        || /思考|推論|判断メモ|プロンプト|システムログ|内部/.test(text)
+        || /^\s*[*-]\s+/.test(text)
+        || text.length > 900;
+}
+
+function sanitizeAIVisibleReply(text, commandWasReturned) {
+    let cleaned = String(text || "")
+        .replace(/\[SYSTEM\].*/gi, "")
+        .replace(/\[DATA\].*/gi, "")
+        .replace(/\[REPLACE\].*/gi, "")
+        .replace(/\[DELETE\].*/gi, "")
+        .replace(/【現在モード】\s*\[[^\]]*モード\]/g, "")
+        .replace(/^\s*\[[^\]]*モード\]\s*$/gm, "")
+        .replace(/\[(?:通常チャット|音声スピード記録)モード\]/g, "")
+        .replace(/システムコマンド.*/gi, "")
+        .trim();
+
+    if (looksLikeLeakedReasoning(cleaned)) {
+        return commandWasReturned ? "" : "うまく処理できませんでした。もう一度短く言ってください。";
+    }
+    return cleaned;
 }
 
 // ▼▼▼ AI通信コア処理 ▼▼▼
 async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 = null) {
     const currentCal = lst.reduce((a, b) => a + b.Cal, 0); const currentP = lst.reduce((a, b) => a + b.P, 0); const currentF = lst.reduce((a, b) => a + b.F, 0); const currentC = lst.reduce((a, b) => a + b.C, 0);
     const d = new Date(); const timeStr = `${d.getHours()}時${d.getMinutes()}分`; const alcStr = TG.alcMode ? "ON" : "OFF";
+
+    if (!imageBase64 && tryHandlePendingDeleteAllAnswer(text, loadingId)) {
+        return "処理しました。";
+    }
+    if (!imageBase64 && tryHandleRecentBatchDelete(text, loadingId)) {
+        return "削除しました。";
+    }
+    if (!imageBase64 && tryHandleStructuredDelete(text, loadingId)) {
+        return "削除しました。";
+    }
 
     let cheatStateContext = "";
     if (typeof isCheatDay !== 'undefined' && isCheatDay) {
@@ -280,12 +754,15 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
     if (chatHistory.length > 6) chatHistory.shift();
 
     try {
-        const payload = { contents: [{ parts: [{ text: prompt }] }] };
+        const payload = { contents: [{ parts: [{ text: prompt }] }], taskType: imageBase64 ? "image" : (isVoiceMode ? "voice" : "chat") };
         if (imageBase64) {
             payload.imageBase64 = imageBase64;
         }
-        const response = await fetch(gasUrl, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload) });
-        const data = await response.json(); let rawText = data.candidates[0].content.parts[0].text;
+        const response = await fetchWithTimeout(gasUrl, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload) });
+        if (!response.ok) throw new Error(`GAS HTTP ${response.status}`);
+        const data = await response.json();
+        let rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!rawText) throw new Error("Empty AI response");
         rawText = rawText.replace(/\*\*/g, "").replace(/^たまちゃん:\s*/i, "").replace(/たまちゃんの返答:/g, "").replace(/たまちゃん:\s*/i, "");
 
         let botReply = rawText;
@@ -298,6 +775,7 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
         // [RECIPE]の抽出
         const recMatch = botReply.match(/\[RECIPE\]\s*(.+)/);
         if (recMatch) { recipeKeywords = recMatch[1].trim(); botReply = botReply.replace(recMatch[0], ""); }
+        if (recipeKeywords && !hasRecipeIntent(text)) recipeKeywords = null;
 
         // [UNKNOWN]の複数抽出
         const unkMatches = [...botReply.matchAll(/\[UNKNOWN\]\s*(.+)/g)];
@@ -311,7 +789,7 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
         const dataMatches = [...botReply.matchAll(/\[DATA\]\s*([^|]+)\|(.+)/g)];
         dataMatches.forEach(m => {
             const parsed = parsePFCFromRaw(m[2]);
-            if (parsed) addedFoods.push({ ...parsed, time: m[1].trim() });
+            if (parsed) addedFoods.push({ ...applyExplicitUserGramAmount(parsed, text, m[2]), time: m[1].trim() });
             botReply = botReply.replace(m[0], "");
         });
 
@@ -319,18 +797,32 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
         const repMatches = [...botReply.matchAll(/\[REPLACE\]\s*(\d+)\s*\|\s*([^|]+)\|(.+)/g)];
         repMatches.forEach(m => {
             const parsed = parsePFCFromRaw(m[3]);
-            if (parsed) replacedFoods.push({ targetId: parseInt(m[1], 10), data: { ...parsed, time: m[2].trim() } });
+            if (parsed) replacedFoods.push({ targetId: parseInt(m[1], 10), data: { ...applyExplicitUserGramAmount(parsed, text, m[3]), time: m[2].trim() } });
             botReply = botReply.replace(m[0], "");
         });
 
-        botReply = botReply.replace(/\[SYSTEM\].*/gi, "").trim();
-        botReply = botReply.replace(/\[DATA\].*/gi, "").trim();
-        botReply = botReply.replace(/システムコマンド.*/gi, "").trim();
-        botReply = botReply.trim(); // 最後に改行などを掃除
+        const commandWasReturned = addedFoods.length > 0 || replacedFoods.length > 0 || deleteIds.length > 0;
+        const allowMutation = isVoiceMode || hasMutationIntent(text);
+        if (commandWasReturned && !allowMutation) {
+            addedFoods = [];
+            replacedFoods = [];
+            deleteIds = [];
+            botReply = botReply.trim();
+            if (!/記録|登録|追加|削除|修正|変更|消/.test(botReply)) {
+                botReply += "\n\n※質問として受け取ったので、記録はしていないたま！";
+            } else {
+                botReply = "質問として受け取ったので、記録はしていないたま！";
+            }
+        }
+
+        botReply = sanitizeAIVisibleReply(botReply, commandWasReturned);
 
         // ★改善箇所：空吹き出しの防止
         if (!botReply) {
-            botReply = "ばっちり記録したたま！";
+            if (deleteIds.length > 0) botReply = "削除したたま！";
+            else if (replacedFoods.length > 0) botReply = "修正したたま！";
+            else if (addedFoods.length > 0) botReply = "ばっちり記録したたま！";
+            else botReply = "処理したたま！";
         }
 
         removeMsg(loadingId); const newMsgId = addChatMsg('bot', botReply, true);
@@ -365,10 +857,10 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
             deleteIds = [];
         }
 
-        deleteIds.forEach(targetId => {
-            const foundIdx = lst.findIndex(item => item.id === targetId);
-            if (foundIdx !== -1) { lst.splice(foundIdx, 1); stateChanged = true; }
-        });
+        if (deleteIds.length > 0 && typeof deleteLogIds === 'function') {
+            const deletedCount = deleteLogIds(deleteIds, "ai", true);
+            if (deletedCount > 0) stateChanged = true;
+        }
 
         // ★重複防止：同じ食品名の[DATA]が複数ある場合は最初の1つだけ残す
         if (addedFoods.length > 1) {
@@ -381,8 +873,11 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
             });
         }
 
+        const newlyAddedIds = [];
         addedFoods.forEach(food => {
-            lst.push({ id: Date.now() + Math.floor(Math.random() * 1000), N: "🤖 " + food.N, P: food.P, F: food.F, C: food.C, A: food.A, Cal: food.Cal, U: "AI", time: food.time });
+            const newId = Date.now() + Math.floor(Math.random() * 1000);
+            lst.push({ id: newId, N: "🤖 " + food.N, P: food.P, F: food.F, C: food.C, A: food.A, Cal: food.Cal, U: "AI", time: food.time });
+            newlyAddedIds.push(newId);
             stateChanged = true;
         });
 
@@ -396,6 +891,7 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
         if (stateChanged) {
             localStorage.setItem('tf_dat', JSON.stringify(lst)); ren(); upd(); window.scrollTo({ top: 0, behavior: 'smooth' });
         }
+        if (newlyAddedIds.length > 0) setLastAIAddedIds(newlyAddedIds);
 
         // ★改善箇所：記憶喪失対策として、「生テキスト(コマンド込み)」をAI側に渡す会話履歴として記憶
         chatHistory.push({ role: 'model', text: rawText });
@@ -404,7 +900,9 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
 
     } catch (error) {
         removeMsg(loadingId);
-        const errMsg = '通信エラーだたま...。もう一度送ってたま！';
+        const errMsg = error && error.name === 'AbortError'
+            ? '処理に時間がかかりすぎました。短めに分けてもう一度送ってください。'
+            : '通信エラーだたま...。もう一度送ってたま！';
         addChatMsg('bot', errMsg, false);
         return errMsg;
     }

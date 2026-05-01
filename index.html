@@ -27,7 +27,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=20260501-cheat-inline02">
 </head>
 
 <body>
@@ -49,12 +49,13 @@
 
     <div class="container">
 
-        <!-- 新・VIP長方形チケットバナー -->
+        <!-- チートデイパス -->
         <div id="premium-ticket-wrap" class="premium-ticket-wrap" onclick="openPreCheatModal()">
             <div class="premium-ticket">
                 <div class="ticket-content">
-                    <span class="ticket-title">Cheat Day Pass</span>
-                    <span id="ticket-cooldown-text" class="ticket-sub">週に1回、ご褒美の日を。</span>
+                    <span class="ticket-kicker">CHEAT DAY PASS</span>
+                    <span class="ticket-title">チートデイパス</span>
+                    <span id="ticket-cooldown-text" class="ticket-sub">週に1回、ご褒美の日を設定できます</span>
                 </div>
                 <div id="ticket-count-badge" class="ticket-badge">x 1</div>
             </div>
@@ -87,7 +88,7 @@
                     <span
                         style="font-size:12px; font-weight:bold; color:#fff; text-shadow: 0 1px 2px rgba(0,0,0,0.2);">🔥
                         ハイカーボモード<br><span style="font-size:10px;color:rgba(255,255,255,0.7);">
-                            (目標Cal2倍・C超特化)</span></span>
+                            (目標Cal1.5倍・C強化)</span></span>
                     <div class="toggle-switch" style="margin:0;">
                         <input type="checkbox" id="high-carb-toggle" onchange="toggleHighCarb()">
                         <span class="slider"></span>
@@ -98,25 +99,14 @@
             <button class="cheat-cancel-btn" onclick="cancelCheatDay()">✕ チートデイをパス（チケットを戻す）</button>
         </div>
 
-        <div class="top-alert-box"
-            onclick="const list = this.querySelector('.ta-list'); list.style.display = list.style.display === 'block' ? 'none' : 'block'">
-            <span class="ta-title">🚨 新UIアップデート！ (タップで詳細)</span>
-            <div class="ta-list" style="display:none;">
-                ・🥚 レイアウトが最新アプリ風に大進化！<br>
-                ・🎤 「ボイス専用UI」でハンズフリー記録が超快適に！<br>
-                ・💾 保存機能が自動化！(設定で変更可)
-            </div>
-            <div class="ta-warn">⚠️ 旧アプリをご利用の方へ<br>下のボタンからデータを引き継いでください。</div>
-            <button class="btn-import-huge"
-                onclick="event.stopPropagation(); document.getElementById('imp-file-top').click()">
-                📥 データの復元 (バックアップを読込)
-            </button>
-            <input type="file" id="imp-file-top" accept=".json,application/json" style="display:none"
-                onchange="importData(this)">
-        </div>
-
         <div class="tgt-sec">
-            <div class="tgt-tog" onclick="toggleTgt()">⚙️ 目標設定: <span id="tgt-disp">設定なし</span> ▼</div>
+            <div class="tgt-tog" onclick="toggleTgt()">
+                <div class="tgt-tog-text">
+                    <span class="tgt-label">目標設定</span>
+                    <span id="tgt-disp" class="tgt-value">2,000 kcal・標準</span>
+                </div>
+                <span class="tgt-arrow">⌄</span>
+            </div>
             <div class="tgt-btns" id="tgt-btns"></div>
             <div id="cust-tgt" style="display:none;">
                 <div class="cust-row">
@@ -138,45 +128,61 @@
         </div>
 
         <div class="dash">
-            <div class="dash-t">今日の目標 <span id="pfc-ratio-disp">(3:2:5)</span></div>
-            <div class="mtr">
-                <div class="mtr-l">
-                    <div class="lbl"><span>Cal</span><small>摂取: <span id="cur-cal">0</span></small></div><span
-                        id="rem-cal" class="rem"></span>
+            <div class="dash-t">目標kcal <span id="dash-target-cal">2000</span> <span id="pfc-ratio-disp">標準(3:2:5)</span></div>
+            <div class="mtr mtr-cal">
+                <div class="cal-summary">
+                    <div>
+                        <div class="cal-caption">今日の摂取カロリー</div>
+                        <div class="cal-value"><span id="cur-cal">0</span><small>kcal</small></div>
+                        <div id="target-cal" class="cal-sub">目標 2000 kcal</div>
+                    </div>
+                    <div>
+                        <div class="cal-caption">残り</div>
+                        <div id="rem-cal" class="rem cal-rem"></div>
+                        <div id="cal-rem-note" class="cal-sub">まずは1食目を記録しよう</div>
+                    </div>
                 </div>
-                <div class="bar-bg">
+                <div class="bar-bg cal-bar">
                     <div id="bar-cal" class="bar"></div>
                     <div id="bar-text-cal" class="bar-text"></div>
                 </div>
             </div>
-            <div class="mtr">
-                <div class="mtr-l">
-                    <div class="lbl"><span>P</span><small>摂取: <span id="cur-p">0</span>g</small></div><span id="rem-p"
-                        class="rem"></span>
+            <div class="pfc-mini-grid">
+                <div class="mtr macro-card macro-p">
+                    <div class="macro-head">
+                        <span class="macro-letter">P</span>
+                        <span class="macro-name">たんぱく質</span>
+                    </div>
+                    <div class="macro-value"><span id="cur-p">0</span><small>g</small></div>
+                    <div id="rem-p" class="macro-goal"></div>
+                    <div class="bar-bg">
+                        <div id="bar-p" class="bar"></div>
+                        <div id="bar-text-p" class="bar-text"></div>
+                    </div>
                 </div>
-                <div class="bar-bg">
-                    <div id="bar-p" class="bar"></div>
-                    <div id="bar-text-p" class="bar-text"></div>
+                <div class="mtr macro-card macro-f">
+                    <div class="macro-head">
+                        <span class="macro-letter">F</span>
+                        <span class="macro-name">脂質</span>
+                    </div>
+                    <div class="macro-value"><span id="cur-f">0</span><small>g</small></div>
+                    <div id="rem-f" class="macro-goal"></div>
+                    <div class="bar-bg">
+                        <div id="bar-f" class="bar"></div>
+                        <div id="bar-text-f" class="bar-text"></div>
+                    </div>
                 </div>
-            </div>
-            <div class="mtr">
-                <div class="mtr-l">
-                    <div class="lbl"><span>F</span><small>摂取: <span id="cur-f">0</span>g</small></div><span id="rem-f"
-                        class="rem"></span>
-                </div>
-                <div class="bar-bg">
-                    <div id="bar-f" class="bar"></div>
-                    <div id="bar-text-f" class="bar-text"></div>
-                </div>
-            </div>
-            <div class="mtr">
-                <div class="mtr-l">
-                    <div class="lbl"><span>C</span><small>摂取: <span id="cur-c">0</span>g</small></div><span id="rem-c"
-                        class="rem"></span>
-                </div>
-                <div class="bar-bg">
-                    <div id="bar-c" class="bar"></div>
-                    <div id="bar-text-c" class="bar-text"></div>
+                <div class="mtr macro-card macro-c">
+                    <div class="macro-head">
+                        <span class="macro-letter">C</span>
+                        <span class="macro-name">炭水化物</span>
+                    </div>
+                    <div class="macro-value"><span id="cur-c">0</span><small>g</small></div>
+                    <div id="rem-c" class="macro-goal"></div>
+                    <div class="bar-bg">
+                        <div id="bar-c" class="bar"></div>
+                        <div id="bar-text-c" class="bar-text"></div>
+                    </div>
                 </div>
             </div>
             <div class="mtr" id="mtr-a" style="display:none;">
@@ -195,6 +201,15 @@
             <button class="btn-voice-main" onclick="openVoiceUI()">
                 🎤 音声で記録
             </button>
+
+            <button class="meal-gacha-btn" onclick="rollMealGacha()">
+                <span class="meal-gacha-icon">🍽️</span>
+                <span>
+                    <strong>今日の献立ガチャ</strong>
+                    <small>栄養バランスに合わせて、おすすめレシピを紹介します</small>
+                </span>
+            </button>
+            <div id="meal-gacha-result" class="meal-gacha-result" style="display:none;"></div>
 
             <div class="sub-actions">
                 <button class="btn-sub-act btn-manual" onclick="toggleManualPanel()">
@@ -310,10 +325,15 @@
             <button class="my-manual-btn" onclick="openMan()">▼ 完全手入力・My食品登録</button>
         </div>
 
-        <h3 style="color:var(--th);text-align:center; margin-top:35px;">今日の記録</h3>
+        <div class="record-section-head">
+            <div>
+                <span class="record-kicker">TODAY</span>
+                <h3>今日の記録</h3>
+            </div>
+            <div class="record-total">総摂取 <strong id="tot-cal">0</strong><span>kcal</span></div>
+        </div>
         <div id="timeline-area"></div>
-        <div style="text-align:right;font-size:18px; margin-top:10px;">総摂取: <span id="tot-cal"
-                style="color:var(--th);font-weight:bold;font-size:22px;">0</span> kcal</div>
+        <div id="deleted-today-panel" class="deleted-today-panel" style="display:none;"></div>
 
         <div id="hist-area" class="expand-area">
             <div class="expand-close" onclick="this.parentElement.style.display='none'">✕ 閉じる</div>
@@ -362,23 +382,35 @@
                         placeholder="70.0"></div>
             </div>
             <button class="btn-body-rec" onclick="saveBody()">記録する</button>
-            <div style="margin-top:20px;border-top:1px dashed #ccc;padding-top:10px;">
-                <div style="text-align:center;font-size:12px;color:#666;margin-bottom:5px;">数字の履歴一覧 (タップで修正)</div>
-                <div id="body-hist-list" style="max-height:150px;overflow-y:auto;background:#f9f9f9;border-radius:8px;">
+            <details class="body-fold" id="body-history-fold">
+                <summary>
+                    <div>
+                        <strong>体組成履歴</strong>
+                        <span>タップで過去の記録を修正できます</span>
+                    </div>
+                    <em>開く</em>
+                </summary>
+                <div class="body-scroll-panel">
+                    <div id="body-hist-list"></div>
                 </div>
-            </div>
+            </details>
 
             <!-- ▼ 追加: アルバムギャラリー ▼ -->
-            <div style="margin-top:20px;border-top:1px solid #eee;padding-top:15px;" id="body-album-section">
-                <div style="text-align:center;font-size:14px;font-weight:bold;color:var(--primary);margin-bottom:10px;">
-                    📸 体型写真アルバム</div>
-                <div id="body-album-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                    <!-- JSで動的に追加 -->
+            <details class="body-fold body-album-fold" id="body-album-section">
+                <summary>
+                    <div>
+                        <strong>体型写真アルバムを見る</strong>
+                        <span>保存した写真を一覧で確認できます</span>
+                    </div>
+                    <em>開く</em>
+                </summary>
+                <div class="body-scroll-panel album-scroll-panel">
+                    <div id="body-album-grid">
+                        <!-- JSで動的に追加 -->
+                    </div>
+                    <div id="body-album-empty">まだ写真がありません</div>
                 </div>
-                <div id="body-album-empty"
-                    style="display:none; text-align:center; color:#999; font-size:12px; padding:20px 0;">まだ写真がありません
-                </div>
-            </div>
+            </details>
         </div>
 
         <!-- フルスクリーン写真プレビュー用モーダル (非表示) -->
@@ -402,6 +434,13 @@
                 onclick="exportData()">
                 💾 バックアップをダウンロード保存
             </button>
+            <button class="btn-import-huge"
+                style="margin-top:10px; background: linear-gradient(135deg, #7f8c8d, #5d6d7e); box-shadow: 0 4px 15px rgba(93,109,126,0.22);"
+                onclick="document.getElementById('imp-file-backup').click()">
+                📥 バックアップを読み込み・復元
+            </button>
+            <input type="file" id="imp-file-backup" accept=".json,application/json" style="display:none"
+                onchange="importData(this)">
         </div>
     </div>
 
@@ -489,36 +528,53 @@
 
     <div id="cheat-pre-modal" class="modal-overlay">
         <div class="modal-box" style="border: 2px solid #d4af37;">
-            <span class="modal-title" style="color:#d4af37; font-size: 20px;">VIP Cheat Day Pass</span>
-            <span class="modal-subtitle" style="margin-top: 15px; font-size: 14px; font-weight:bold; color:#333;">⚠️ ご注意
-                ⚠️<br><br>このチケットを消費すると、<br><span
-                    style="color:#e74c3c">「今日（または予約した日）から1週間」は再利用できなくなります。</span><br>（連続でのチートデイはできません）</span>
-            <div style="font-size:12px; color:#666; margin-top:10px; text-align:left;">本当に使いますか？</div>
+            <span class="modal-title" style="color:#d4af37; font-size: 20px;">チートデイパス確認</span>
+            <span id="cheat-confirm-text" class="modal-subtitle"
+                style="margin-top: 15px; font-size: 14px; font-weight:bold; color:#333;">このチケットを使用します。</span>
+            <div style="font-size:12px; color:#666; margin-top:10px; text-align:left;">
+                使用または予約を確定すると、1週間は再利用できません。よろしいですか？
+            </div>
             <div style="display: flex; gap: 10px; margin-top: 15px;">
                 <button class="m-btn m-cancel" onclick="closePreCheatModal()">やめる</button>
                 <button class="m-btn"
                     style="background: #111; color:#d4af37; border: 1px solid #d4af37; box-shadow:0 4px 10px rgba(212,175,55,0.3);"
-                    onclick="confirmPreCheatModal()">次へ</button>
+                    onclick="confirmPreCheatModal()">確定する</button>
             </div>
         </div>
     </div>
 
     <div id="cheat-ticket-modal" class="modal-overlay">
         <div class="modal-box" style="border: 2px solid #d4af37;">
-            <span class="modal-title" style="color:#d4af37; font-size: 20px;">VIP Cheat Day Pass</span>
+            <span class="modal-title" style="color:#d4af37; font-size: 20px;">チートデイパス</span>
             <span class="modal-subtitle"
-                style="margin-top: 10px; font-size: 13px;">今日はチートデイにする？<br>ストレスを忘れて思いっきり楽しもう！</span>
+                style="margin-top: 10px; font-size: 13px;">今日使うか、別の日に予約できます。</span>
             <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
                 <button class="m-btn"
                     style="background: linear-gradient(135deg, #111 0%, #333 100%); color:#d4af37; border: 1px solid #d4af37; font-size:16px; box-shadow:0 4px 10px rgba(212,175,55,0.3);"
-                    onclick="startCheatDay(true)">
-                    ✨ 今すぐ使う
+                    onclick="prepareCheatToday()">
+                    ✨ 今日使う
                 </button>
                 <button class="m-btn" style="background:#fff; color:#111; border:2px solid #111; font-size:14px;"
-                    onclick="reserveCheatDay()">
+                    onclick="openCheatReserveModal()">
                     📅 カレンダーで予約する
                 </button>
                 <button class="m-btn m-cancel" style="margin-top:5px;" onclick="closeCheatModal()">やめる</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="cheat-reserve-modal" class="modal-overlay">
+        <div class="modal-box" style="border: 2px solid #d4af37;">
+            <span class="modal-title" style="color:#d4af37; font-size: 20px;">予約日を選択</span>
+            <span class="modal-subtitle" style="margin-top: 10px; font-size: 13px;">
+                チートデイにしたい日を選んでください。
+            </span>
+            <input type="date" id="cheat-reserve-date" class="modal-date">
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button class="m-btn m-cancel" onclick="closeCheatReserveModal()">戻る</button>
+                <button class="m-btn"
+                    style="background: #111; color:#d4af37; border: 1px solid #d4af37;"
+                    onclick="prepareCheatReserve()">予約へ進む</button>
             </div>
         </div>
     </div>
@@ -645,15 +701,32 @@
         <div class="v-body">
             <div class="v-status" id="v-status-text">マイクOFF</div>
             <div class="v-mic-container">
+                <label class="v-auto-send">
+                    <input type="checkbox" id="v-auto-send-toggle" onchange="toggleVoiceAutoSend()">
+                    <span class="v-auto-switch"></span>
+                    <span class="v-auto-text">自動送信</span>
+                </label>
                 <div class="v-mic-btn pulse-animation" id="v-main-mic" onclick="toggleVoiceMic()">
                     🎙️
                 </div>
+                <button class="v-send-now" id="v-send-now" onclick="finalizeSpeechNow()" type="button">すぐ送信</button>
             </div>
         </div>
 
         <div class="v-footer">
             <input type="text" id="v-chat-input" placeholder="文字でも記録できます">
             <button onclick="sendVoiceChat()">送信</button>
+        </div>
+    </div>
+
+    <div id="delete-all-confirm" class="delete-confirm" style="display:none;">
+        <div class="delete-confirm-card">
+            <strong>今日の記録をすべて削除しますか？</strong>
+            <span>削除後も、今日中なら「今日削除した記録」から元に戻せます。</span>
+            <div>
+                <button class="delete-confirm-no" onclick="if(window.clearPendingDeleteAllToday) clearPendingDeleteAllToday(); closeDeleteAllConfirm()">いいえ</button>
+                <button class="delete-confirm-yes" onclick="if(window.clearPendingDeleteAllToday) clearPendingDeleteAllToday(); confirmDeleteAllToday()">はい、削除</button>
+            </div>
         </div>
     </div>
 
@@ -667,15 +740,38 @@
 
     <div class="bottom-tab-bar">
         <div class="tab-item active" onclick="goHome(this)">
-            <div class="icon">🏠</div>
+            <div class="icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3 10.5 12 3l9 7.5"></path>
+                    <path d="M5.5 9.5V21h13V9.5"></path>
+                    <path d="M9.5 21v-6h5v6"></path>
+                </svg>
+            </div>
             <div class="label">ホーム</div>
         </div>
         <div class="tab-item" onclick="openTabPanel('hist-area', this)">
-            <div class="icon">📅</div>
+            <div class="icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="4" y="5" width="16" height="16" rx="3"></rect>
+                    <path d="M8 3v4"></path>
+                    <path d="M16 3v4"></path>
+                    <path d="M4 10h16"></path>
+                    <path d="M8 14h3"></path>
+                    <path d="M13 14h3"></path>
+                    <path d="M8 17h3"></path>
+                </svg>
+            </div>
             <div class="label">履歴</div>
         </div>
         <div class="tab-item" onclick="openTabPanel('graph-area', this)">
-            <div class="icon">📊</div>
+            <div class="icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 20V10"></path>
+                    <path d="M12 20V4"></path>
+                    <path d="M19 20v-7"></path>
+                    <path d="M3 20h18"></path>
+                </svg>
+            </div>
             <div class="label">統計</div>
         </div>
     </div>
@@ -751,13 +847,13 @@
 
     <!-- ▼ UI制御用スクリプト ▼ -->
 
-    <script src="database.js"></script>
-    <script src="tamachan-data.js"></script>
-    <script src="app.js"></script>
-    <script src="ai.js"></script>
+    <script src="database.js?v=20260501-trash-delete02"></script>
+    <script src="tamachan-data.js?v=20260501-trash-delete02"></script>
+    <script src="app.js?v=20260501-cheat-inline01"></script>
+    <script src="ai.js?v=20260501-voice-local01"></script>
 
     <!-- ▼ 新規追加: アルバムUIレンダリング ▼ -->
-    <script src="main-inline.js"></script>
+    <script src="main-inline.js?v=20260501-cheat-inline01"></script>
 </body>
 
 </html>
