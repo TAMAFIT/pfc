@@ -126,40 +126,18 @@ function startRecognition(onStartCallback, onResultCallback) {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) { showToast("お使いのブラウザは音声入力非対応だたま！"); return; }
 
-    recognition = new SpeechRecognition(); recognition.lang = 'ja-JP'; recognition.continuous = true; recognition.interimResults = true;
+    recognition = new SpeechRecognition(); recognition.lang = 'ja-JP'; recognition.continuous = false; recognition.interimResults = false;
     speechLatestText = "";
     speechFinalText = "";
     speechHadResult = false;
     speechResultCallback = onResultCallback;
 
-    const scheduleFinalize = () => {
-        if (activeMicTarget === 'voice' && !voiceAutoSend) {
-            const vStatusText = document.getElementById('v-status-text');
-            if (vStatusText && speechLatestText.trim()) vStatusText.innerText = "送信待ち";
-            return;
-        }
-        if (speechFinalizeTimer) clearTimeout(speechFinalizeTimer);
-        speechFinalizeTimer = setTimeout(() => {
-            const txt = speechLatestText.trim();
-            forceStopMic();
-            if (txt) onResultCallback(txt);
-        }, 2200);
-    };
-
     recognition.onstart = () => { isRecording = true; onStartCallback(); };
     recognition.onresult = (event) => {
         if (!isRecording) return;
-        let interimText = "";
-        for (let i = event.resultIndex || 0; i < event.results.length; i++) {
-            const part = event.results[i][0].transcript || "";
-            if (!part) continue;
-            if (event.results[i].isFinal) {
-                if (!speechFinalText.endsWith(part)) speechFinalText += part;
-            } else {
-                interimText += part;
-            }
-        }
-        const txt = normalizeSpeechTranscript(`${speechFinalText}${interimText}`);
+        const result = event.results && event.results[0] && event.results[0][0];
+        const txt = normalizeSpeechTranscript(result ? result.transcript : "");
+        if (!txt) return;
         speechLatestText = txt;
         speechHadResult = true;
         if (activeMicTarget === 'voice') {
@@ -169,7 +147,14 @@ function startRecognition(onStartCallback, onResultCallback) {
             const cInputEl = document.getElementById('chat-input');
             if (cInputEl) cInputEl.value = txt;
         }
-        scheduleFinalize();
+        if (activeMicTarget === 'voice' && !voiceAutoSend) {
+            const vStatusText = document.getElementById('v-status-text');
+            if (vStatusText) vStatusText.innerText = "送信待ち";
+            forceStopMic(true);
+            return;
+        }
+        forceStopMic();
+        onResultCallback(txt);
     };
     recognition.onerror = (event) => {
         forceStopMic();
@@ -177,21 +162,13 @@ function startRecognition(onStartCallback, onResultCallback) {
     };
     recognition.onend = () => {
         if (!isRecording) return;
-        if (speechHadResult && activeMicTarget === 'voice' && !voiceAutoSend) {
-            const vStatusText = document.getElementById('v-status-text');
-            if (vStatusText) vStatusText.innerText = "送信待ち";
-            forceStopMic(true);
-        } else if (speechHadResult) {
-            scheduleFinalize();
-        } else {
-            forceStopMic();
-        }
+        forceStopMic();
     };
     recognition.start();
 }
 
 function finalizeSpeechNow() {
-    const txt = (speechLatestText || document.getElementById('v-chat-input')?.value || "").trim();
+    const txt = (document.getElementById('v-chat-input')?.value || speechLatestText || "").trim();
     const cb = speechResultCallback;
     forceStopMic();
     if (txt && cb) cb(txt);
@@ -461,6 +438,13 @@ function normalizeSpeechTranscript(text) {
         "納豆", "味噌汁", "みそ汁", "ブロッコリー"
     ];
     foodWords.sort((a, b) => b.length - a.length).forEach(word => {
+        const amountUnit = "(g|ｇ|グラム|ぐらむ|杯|パック|P|p|個)?";
+        const amountRepeat = new RegExp(`(${escapeRegExp(word)}\\s*([0-9]+(?:\\.[0-9]+)?)\\s*${amountUnit})\\s*${escapeRegExp(word)}\\s*\\2\\s*\\3`, "g");
+        let prev = "";
+        while (prev !== out) {
+            prev = out;
+            out = out.replace(amountRepeat, "$1");
+        }
         const repeated = new RegExp(`(?:${escapeRegExp(word)}\\s*){2,}`, "g");
         out = out.replace(repeated, `${word} `);
     });
