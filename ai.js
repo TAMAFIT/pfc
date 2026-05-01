@@ -147,7 +147,27 @@ function startRecognition(onStartCallback, onResultCallback) {
         if (!isRecording) return;
         let txt = "";
         for (let i = 0; i < event.results.length; i++) {
-            txt += event.results[i][0].transcript;
+            let t = event.results[i][0].transcript;
+            if (!t) continue;
+            if (i === 0) {
+                txt = t;
+            } else {
+                let prev = event.results[i-1][0].transcript;
+                if (t === prev) {
+                    // Androidバグ回避: 全く同じ結果が連続した場合は無視
+                    continue;
+                } else if (t.startsWith(prev) && t.length > prev.length) {
+                    // Androidバグ回避: 前回の結果を含んだ累積文字列が返ってきた場合は上書き
+                    if (txt.endsWith(prev)) {
+                        txt = txt.slice(0, -prev.length) + t;
+                    } else {
+                        txt += t;
+                    }
+                } else {
+                    // PC/iOS等の正常な挙動: 単純に結合
+                    txt += t;
+                }
+            }
         }
         speechLatestText = txt;
         speechHadResult = true;
