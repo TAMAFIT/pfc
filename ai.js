@@ -6,12 +6,14 @@ let isRecording = false;
 let activeMicTarget = null; // 'voice' or 'chat'
 let speechFinalizeTimer = null;
 let speechLatestText = "";
+let speechFinalText = "";
 let speechHadResult = false;
 let speechResultCallback = null;
 let voiceAutoSend = localStorage.getItem('tf_voice_auto_send') !== 'false';
 let pendingDeleteAllToday = false;
 let lastTamaChatSendText = "";
 let lastTamaChatSendAt = 0;
+let voiceSendInFlight = false;
 window.clearPendingDeleteAllToday = function () { pendingDeleteAllToday = false; };
 
 // ▼▼▼ トースト通知 ▼▼▼
@@ -56,6 +58,7 @@ const forceStopMic = (preserveSpeech = false) => {
     }
     if (!preserveSpeech) {
         speechLatestText = "";
+        speechFinalText = "";
         speechHadResult = false;
         speechResultCallback = null;
     }
@@ -125,6 +128,7 @@ function startRecognition(onStartCallback, onResultCallback) {
 
     recognition = new SpeechRecognition(); recognition.lang = 'ja-JP'; recognition.continuous = true; recognition.interimResults = true;
     speechLatestText = "";
+    speechFinalText = "";
     speechHadResult = false;
     speechResultCallback = onResultCallback;
 
@@ -145,30 +149,17 @@ function startRecognition(onStartCallback, onResultCallback) {
     recognition.onstart = () => { isRecording = true; onStartCallback(); };
     recognition.onresult = (event) => {
         if (!isRecording) return;
-        let txt = "";
-        for (let i = 0; i < event.results.length; i++) {
-            let t = event.results[i][0].transcript;
-            if (!t) continue;
-            if (i === 0) {
-                txt = t;
+        let interimText = "";
+        for (let i = event.resultIndex || 0; i < event.results.length; i++) {
+            const part = event.results[i][0].transcript || "";
+            if (!part) continue;
+            if (event.results[i].isFinal) {
+                if (!speechFinalText.endsWith(part)) speechFinalText += part;
             } else {
-                let prev = event.results[i-1][0].transcript;
-                if (t === prev) {
-                    // Androidバグ回避: 全く同じ結果が連続した場合は無視
-                    continue;
-                } else if (t.startsWith(prev) && t.length > prev.length) {
-                    // Androidバグ回避: 前回の結果を含んだ累積文字列が返ってきた場合は上書き
-                    if (txt.endsWith(prev)) {
-                        txt = txt.slice(0, -prev.length) + t;
-                    } else {
-                        txt += t;
-                    }
-                } else {
-                    // PC/iOS等の正常な挙動: 単純に結合
-                    txt += t;
-                }
+                interimText += part;
             }
         }
+        const txt = normalizeSpeechTranscript(`${speechFinalText}${interimText}`);
         speechLatestText = txt;
         speechHadResult = true;
         if (activeMicTarget === 'voice') {
@@ -298,6 +289,8 @@ async function sendTamaChat() {
 
 window.sendVoiceChat = async function () {
     const inputEl = document.getElementById('v-chat-input'); const text = inputEl.value.trim(); if (!text) return;
+    if (voiceSendInFlight) return;
+    voiceSendInFlight = true;
     const vStatusText = document.getElementById('v-status-text');
     inputEl.value = ''; inputEl.disabled = true;
     vStatusText.innerText = `⏳ データ処理中...`;
@@ -311,6 +304,7 @@ window.sendVoiceChat = async function () {
     } finally {
         vStatusText.innerText = "マイクOFF";
         inputEl.disabled = false;
+        voiceSendInFlight = false;
     }
 }
 
@@ -456,6 +450,23 @@ function escapeRegExp(str) {
     return String(str || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function normalizeSpeechTranscript(text) {
+    let out = String(text || "")
+        .replace(/[、。]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    const foodWords = [
+        "鶏胸肉", "鶏むね肉", "鶏むね", "鳥胸肉", "胸肉", "鶏肉",
+        "白米", "ご飯", "ごはん", "米", "ライス",
+        "納豆", "味噌汁", "みそ汁", "ブロッコリー"
+    ];
+    foodWords.sort((a, b) => b.length - a.length).forEach(word => {
+        const repeated = new RegExp(`(?:${escapeRegExp(word)}\\s*){2,}`, "g");
+        out = out.replace(repeated, `${word} `);
+    });
+    return out.replace(/\s+/g, " ").trim();
+}
+
 function parseBaseUnitAmount(unitText) {
     const unit = String(unitText || "");
     const n = parseFloat(unit.replace(/[^\d.]/g, "")) || 1;
@@ -467,7 +478,7 @@ function parseBaseUnitAmount(unitText) {
 
 function getLocalVoiceFoodRules() {
     return [
-        { dbName: "鶏むね(皮なし)", aliases: ["鶏むね", "鶏胸肉", "鶏胸", "とりむね", "胸肉", "チキン"] },
+        { dbName: "鶏むね(皮なし)", aliases: ["鶏むね肉", "鶏むね", "鶏胸肉", "鶏胸", "とりむね", "鳥胸肉", "胸肉", "鶏肉", "鳥肉", "とり肉", "チキン"] },
         { dbName: "白米", aliases: ["白米", "ごはん", "ご飯", "ライス", "米"] },
         { dbName: "納豆", aliases: ["納豆", "なっとう"] },
         { dbName: "味噌汁(豆腐わかめ)", aliases: ["味噌汁", "みそ汁", "みそしる"] },
@@ -477,7 +488,7 @@ function getLocalVoiceFoodRules() {
 
 function parseLocalVoiceMealFoods(text) {
     if (typeof DB === 'undefined') return [];
-    const source = String(text || "").replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+    const source = normalizeSpeechTranscript(String(text || "").replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)));
     const foods = [];
 
     getLocalVoiceFoodRules().forEach(rule => {
