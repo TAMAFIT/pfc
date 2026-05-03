@@ -391,8 +391,8 @@ function extractExplicitGramForDbFood(userText, dbItem) {
     const clauses = text.split(/(?:と|、|,|。|\n)/).map(x => x.trim()).filter(Boolean);
 
     for (const clause of clauses) {
-        const gramMatch = clause.match(/([0-9]+(?:\.[0-9]+)?)\s*g/);
-        if (gramMatch && pattern.test(clause)) return parseFloat(gramMatch[1]);
+        const gramMatches = [...clause.matchAll(/([0-9]+(?:\.[0-9]+)?)\s*g/g)];
+        if (gramMatches.length === 1 && pattern.test(clause)) return parseFloat(gramMatches[0][1]);
     }
 
     const foodMatch = text.match(pattern);
