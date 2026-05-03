@@ -918,13 +918,13 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
 
     let historyText = chatHistory.map(m => `${m.role === 'user' ? 'あなた' : 'たまちゃん'}: ${m.text}`).join('\n');
     let userPrefText = "";
-    let cheatSheetText = isVoiceMode ? "" : buildDbCheatSheetForAI(text);
+    let cheatSheetText = buildDbCheatSheetForAI(text);
 
     let basePrompt, voiceRule;
 
     if (isVoiceMode) {
         // 音声モード: たまちゃんのペルソナを完全に排除した専用プロンプトを使用
-        basePrompt = typeof VOICE_SYSTEM_PROMPT_AI_ONLY !== 'undefined' ? VOICE_SYSTEM_PROMPT_AI_ONLY : 'あなたは食事記録専用の無機質なアシスタントです。';
+        basePrompt = typeof VOICE_SYSTEM_PROMPT !== 'undefined' ? VOICE_SYSTEM_PROMPT : (typeof VOICE_SYSTEM_PROMPT_AI_ONLY !== 'undefined' ? VOICE_SYSTEM_PROMPT_AI_ONLY : 'あなたは食事記録専用の無機質なアシスタントです。');
         voiceRule = '';
         // 音声モード時は直近2件のみ残す（訂正・修正に必要な文脈を保持）
         // ただし「たまちゃん」の口調が含まれる履歴は除外する
@@ -977,7 +977,7 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
         dataMatches.forEach(m => {
             const parsed = parsePFCFromRaw(m[2]);
             if (parsed) {
-                const normalized = isVoiceMode ? parsed : applyDbKnownAmount(parsed, text, m[2]);
+                const normalized = applyDbKnownAmount(parsed, text, m[2]);
                 addedFoods.push({ ...normalized, time: isVoiceMode ? currentMealTime : m[1].trim() });
             }
             botReply = botReply.replace(m[0], "");
@@ -989,7 +989,7 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
             const parsed = parsePFCFromRaw(m[3]);
             if (parsed) {
                 const targetId = parseInt(m[1], 10);
-                const normalized = isVoiceMode ? parsed : applyDbKnownAmount(parsed, text, m[3]);
+                const normalized = applyDbKnownAmount(parsed, text, m[3]);
                 const existing = isVoiceMode ? lst.find(x => Number(x.id) === targetId) : null;
                 const nextTime = isVoiceMode ? (existing?.time || currentMealTime) : m[2].trim();
                 replacedFoods.push({ targetId, data: { ...normalized, time: nextTime } });
