@@ -345,9 +345,39 @@ function shwList(c, btn) {
         d.appendChild(actBtn); l.appendChild(d);
     });
     l.style.display = 'block';
+    positionFoodListOverlay();
 }
 
-function clsList() { document.getElementById('f-list').style.display = 'none'; document.querySelectorAll('.c-btn').forEach(x => x.classList.remove('act')); }
+function positionFoodListOverlay() {
+    const l = document.getElementById('f-list');
+    const cats = document.getElementById('cat-btns');
+    const panel = document.getElementById('manual-inp-sec');
+    if (!l || !cats || !panel || l.style.display !== 'block') return;
+    const catRect = cats.getBoundingClientRect();
+    const panelRect = panel.getBoundingClientRect();
+    const side = Math.max(12, panelRect.left);
+    l.style.position = 'fixed';
+    l.style.left = side + 'px';
+    l.style.right = Math.max(12, window.innerWidth - panelRect.right) + 'px';
+    l.style.top = Math.min(catRect.bottom + 8, window.innerHeight - 180) + 'px';
+    l.style.maxHeight = Math.max(180, window.innerHeight - catRect.bottom - 28) + 'px';
+}
+
+window.addEventListener('resize', positionFoodListOverlay);
+window.addEventListener('scroll', positionFoodListOverlay, true);
+
+function clsList() {
+    const l = document.getElementById('f-list');
+    if (l) {
+        l.style.display = 'none';
+        l.style.position = '';
+        l.style.left = '';
+        l.style.right = '';
+        l.style.top = '';
+        l.style.maxHeight = '';
+    }
+    document.querySelectorAll('.c-btn').forEach(x => x.classList.remove('act'));
+}
 
 function selFd(i) {
     selIdx = i; editIdx = -1; document.getElementById('btn-reg').textContent = "リストに追加する"; clsList(); document.getElementById('amt-area').style.display = 'block';
@@ -404,7 +434,9 @@ function updBd(v) {
     document.getElementById('m-mul').value = parseFloat(m.toFixed(2));
     const P = d[4] * m, F = d[5] * m, C = d[6] * m;
     let unitPfcCal = (d[4] * 4) + (d[5] * 9) + (d[6] * 4);
-    let unitA = (d[0].includes("酒") || d[7] > unitPfcCal + 10) ? Math.max(0, (d[7] - unitPfcCal) / 7) : 0;
+    let unitA = Number.isFinite(Number(d[8]))
+        ? Number(d[8])
+        : ((d[0].includes("酒") || d[7] > unitPfcCal + 10) ? Math.max(0, (d[7] - unitPfcCal) / 7) : 0);
     let A = unitA * m; const Cal = Math.round((P * 4) + (F * 9) + (C * 4) + (A * 7));
     document.getElementById('pv-bar').style.display = 'block'; const dispUnit = d[3].includes('g') ? 'g' : (d[3].includes('杯') ? '杯' : '個');
     document.getElementById('pv-name').textContent = `${d[1]} (${v}${dispUnit})`;
@@ -442,7 +474,9 @@ function addM() {
 }
 
 function ren() {
-    const tlArea = document.getElementById('timeline-area'); if (!tlArea) return; tlArea.innerHTML = ""; let totalCal = 0;
+    const tlArea = document.getElementById('timeline-area'); if (!tlArea) return;
+    const openMealKeys = new Set([...tlArea.querySelectorAll('details.meal-card[open]')].map(x => x.dataset.mealKey || ""));
+    tlArea.innerHTML = ""; let totalCal = 0;
     const times = ["朝", "昼", "晩", "間食"]; const emojis = { "朝": "☀️", "昼": "☁️", "晩": "🌙", "間食": "☕" };
     const cleanFoodName = name => String(name || "").replace(/^🤖\s*/, "");
     const cleanUnit = unit => String(unit || "") === "AI" ? "" : String(unit || "");
@@ -453,7 +487,7 @@ function ren() {
     renderTimes.forEach(t => {
         const items = lst.map((x, i) => ({ ...x, i })).filter(x => t === "昼" && hasLunch ? (x.time === "昼" || x.time === "間食") : x.time === t); if (items.length === 0) return;
         let tCal = 0, tP = 0, tF = 0, tC = 0, tA = 0; items.forEach(x => { tCal += x.Cal; tP += x.P; tF += x.F; tC += x.C; tA += (x.A || 0); totalCal += x.Cal; });
-        const sec = document.createElement('details'); sec.className = 'tl-sec meal-card'; let aStr = (TG.alcMode && tA > 0) ? ` <span class="macro-a">A${tA.toFixed(0)}</span>` : "";
+        const sec = document.createElement('details'); sec.className = 'tl-sec meal-card'; sec.dataset.mealKey = t; if (openMealKeys.has(t)) sec.open = true; let aStr = (TG.alcMode && tA > 0) ? ` <span class="macro-a">A${tA.toFixed(0)}</span>` : "";
         const mealLabel = t === "昼" && hasLunch && hasSnack ? "昼食・間食" : (t === "間食" ? "間食" : `${t}食`);
         sec.innerHTML = `<summary class="meal-summary ${t}"><div class="meal-left"><div><div class="meal-title"><span>${mealLabel}</span></div></div></div><div class="meal-macro-line"><span>P ${tP.toFixed(0)}g</span><span>F ${tF.toFixed(0)}g</span><span>C ${tC.toFixed(0)}g</span>${aStr}</div><div class="tl-stats"><strong>${tCal.toLocaleString()}</strong><em>kcal</em></div><span class="meal-chevron">›</span></summary><ul class="f-list meal-detail-list">${items.map(x => {
             let aTag = (TG.alcMode && x.A > 0) ? ` <span style="color:var(--my)">A${x.A.toFixed(1)}</span>` : ""; let isAlcClass = (TG.alcMode && x.A > 0) ? "alc" : "";
@@ -546,6 +580,14 @@ function upd() {
     if (document.getElementById('cur-p')) document.getElementById('cur-p').textContent = t.P.toFixed(0);
     if (document.getElementById('cur-f')) document.getElementById('cur-f').textContent = t.F.toFixed(0);
     if (document.getElementById('cur-c')) document.getElementById('cur-c').textContent = t.C.toFixed(0);
+    const setMacroCal = (id, kcal) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = `${Math.round(kcal).toLocaleString()} kcal`;
+    };
+    setMacroCal('macro-cal-p', t.P * 4);
+    setMacroCal('macro-cal-f', t.F * 9);
+    setMacroCal('macro-cal-c', t.C * 4);
+    setMacroCal('macro-cal-a', t.A * 7);
 
     const setBar = (k, v, tg, u) => {
         const r = tg - v; const el = document.getElementById('bar-' + k.toLowerCase()); const tx = document.getElementById('rem-' + k.toLowerCase()); const tbox = document.getElementById('bar-text-' + k.toLowerCase());
@@ -595,7 +637,20 @@ function upd() {
 
     setBar('Cal', t.Cal, dispCal, 'kcal'); setBar('P', t.P, dispP, 'g'); setBar('F', t.F, dispF, 'g'); setBar('C', t.C, dispC, 'g');
 
-    if (TG.alcMode) { let elA = document.getElementById('bar-a'); let tboxA = document.getElementById('bar-text-a'); if (elA) elA.style.width = Math.min((t.A / 50) * 100, 100) + '%'; if (tboxA) tboxA.textContent = `${t.A.toFixed(1)}g`; }
+    if (TG.alcMode) {
+        const alcoholTarget = 40;
+        const elA = document.getElementById('bar-a');
+        const tboxA = document.getElementById('bar-text-a');
+        const remA = document.getElementById('rem-a');
+        const goalA = document.getElementById('alc-goal');
+        if (elA) {
+            elA.style.width = Math.min((t.A / alcoholTarget) * 100, 100) + '%';
+            elA.className = 'bar ' + (t.A > alcoholTarget ? 'ov' : '');
+        }
+        if (tboxA) tboxA.textContent = `${Math.round(Math.min((t.A / alcoholTarget) * 100, 100))}%`;
+        if (remA) remA.textContent = `${t.A.toFixed(1)}g`;
+        if (goalA) goalA.textContent = `目安 ${alcoholTarget}g`;
+    }
     const modeNames = { std: "標準(3:2:5)", lowfat: "ローファット(3:1:6)", muscle: "筋肥大(4:2:4)", keto: "ケト(3:6:1)" }; const modeName = modeNames[TG.mode] || "カスタム";
 
     if (document.getElementById('tgt-disp')) {

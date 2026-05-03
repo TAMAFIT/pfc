@@ -27,7 +27,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260501-voice-ui02">
+    <link rel="stylesheet" href="style.css?v=20260503-manual-alc01">
 </head>
 
 <body>
@@ -159,6 +159,7 @@
                         <div id="bar-p" class="bar"></div>
                         <div id="bar-text-p" class="bar-text"></div>
                     </div>
+                    <div id="macro-cal-p" class="macro-cal-pill">0 kcal</div>
                 </div>
                 <div class="mtr macro-card macro-f">
                     <div class="macro-head">
@@ -171,6 +172,7 @@
                         <div id="bar-f" class="bar"></div>
                         <div id="bar-text-f" class="bar-text"></div>
                     </div>
+                    <div id="macro-cal-f" class="macro-cal-pill">0 kcal</div>
                 </div>
                 <div class="mtr macro-card macro-c">
                     <div class="macro-head">
@@ -183,16 +185,21 @@
                         <div id="bar-c" class="bar"></div>
                         <div id="bar-text-c" class="bar-text"></div>
                     </div>
+                    <div id="macro-cal-c" class="macro-cal-pill">0 kcal</div>
                 </div>
             </div>
             <div class="mtr" id="mtr-a" style="display:none;">
                 <div class="mtr-l">
                     <div class="lbl"><span style="color:var(--my)">A (アルコール)</span></div><span id="rem-a" class="rem"
-                        style="font-size:11px;">※1g=7kcalで計算</span>
+                        style="font-size:11px;">0.0g</span>
                 </div>
                 <div class="bar-bg">
                     <div id="bar-a" class="bar"></div>
                     <div id="bar-text-a" class="bar-text"></div>
+                </div>
+                <div class="alc-sub-row">
+                    <span id="alc-goal">目安 40g</span>
+                    <span id="macro-cal-a" class="macro-cal-pill">0 kcal</span>
                 </div>
             </div>
         </div>
@@ -848,10 +855,10 @@
 
     <!-- ▼ UI制御用スクリプト ▼ -->
 
-    <script src="database.js?v=20260501-trash-delete02"></script>
-    <script src="tamachan-data.js?v=20260503-ai-voice01"></script>
-    <script src="app.js?v=20260503-voice-time01"></script>
-    <script src="ai.js?v=20260503-ai-voice01"></script>
+    <script src="database.js?v=20260503-alcohol-a01"></script>
+    <script src="tamachan-data.js?v=20260503-gemma3-db01"></script>
+    <script src="app.js?v=20260503-alcohol-a01"></script>
+    <script src="ai.js?v=20260503-gemma3-db01"></script>
 
     <!-- ▼ 新規追加: アルバムUIレンダリング ▼ -->
     <script src="main-inline.js?v=20260501-cheat-inline01"></script>

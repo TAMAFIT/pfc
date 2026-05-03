@@ -337,6 +337,10 @@ function parsePFCFromRaw(dRaw) {
     let aBase = numParts.length >= 4 ? numParts[3] : 0;
     let mul = numParts.length >= 5 ? numParts[4] : (numParts.length === 4 && numParts[3] < 10 ? numParts[3] : 1);
     if (numParts.length === 4 && numParts[3] <= 5 && !dRaw.includes('A')) { mul = numParts[3]; aBase = 0; }
+    const alcoholNameHint = /(ワイン|ビール|チューハイ|酎ハイ|サワー|ハイボール|焼酎|日本酒|ウイスキー|梅酒|酒|カクテル)/.test(name);
+    if (alcoholNameHint && mul > 1 && aBase >= 20) {
+        aBase = aBase / mul;
+    }
     let p = pBase * mul, f = fBase * mul, c = cBase * mul, a = aBase * mul;
     let cal = Math.round(p * 4 + f * 9 + c * 4 + a * 7);
     return { N: name, P: p, F: f, C: c, A: a, Cal: cal };
@@ -392,6 +396,17 @@ function extractExplicitGramForDbFood(userText, dbItem) {
     return null;
 }
 
+function getDbAlcoholBase(dbItem) {
+    if (!dbItem) return 0;
+    if (Number.isFinite(Number(dbItem[8]))) return Number(dbItem[8]);
+    const unitPfcCal = (Number(dbItem[4] || 0) * 4) + (Number(dbItem[5] || 0) * 9) + (Number(dbItem[6] || 0) * 4);
+    const alcoholHint = `${dbItem[0]} ${dbItem[1]} ${dbItem[2]}`;
+    const isAlcohol = /(酒|お酒|ビール|ワイン|サワー|ハイボール|焼酎|日本酒|梅酒|ウイスキー|カクテル|ジン|カシス|ストロング|ウーロンハイ|緑茶ハイ)/.test(alcoholHint);
+    return isAlcohol && Number(dbItem[7] || 0) > unitPfcCal + 10
+        ? Math.max(0, (Number(dbItem[7] || 0) - unitPfcCal) / 7)
+        : 0;
+}
+
 function applyExplicitUserGramAmount(food, userText, rawDataText = "") {
     const dbItem = findDbFoodForAIName(food.N, rawDataText);
     const grams = extractExplicitGramForDbFood(userText, dbItem);
@@ -402,14 +417,93 @@ function applyExplicitUserGramAmount(food, userText, rawDataText = "") {
     const p = dbItem[4] * mul;
     const f = dbItem[5] * mul;
     const c = dbItem[6] * mul;
-    const unitPfcCal = (dbItem[4] * 4) + (dbItem[5] * 9) + (dbItem[6] * 4);
-    const aBase = dbItem[7] > unitPfcCal + 10 ? Math.max(0, (dbItem[7] - unitPfcCal) / 7) : 0;
+    const aBase = getDbAlcoholBase(dbItem);
     const a = aBase * mul;
     const cal = Math.round((p * 4) + (f * 9) + (c * 4) + (a * 7));
 
     return {
         ...food,
         N: `${dbItem[1]}(${grams}g)`,
+        P: p,
+        F: f,
+        C: c,
+        A: a,
+        Cal: cal
+    };
+}
+
+function getDbUnitMl(dbItem) {
+    const unit = String(dbItem?.[3] || "");
+    const name = String(dbItem?.[1] || "");
+    const n = parseFloat(unit.replace(/[^\d.]/g, ""));
+    if (/ml/i.test(unit)) return Number.isFinite(n) ? n : 100;
+    if (/350/.test(name)) return 350;
+    if (/500/.test(name)) return 500;
+    if (/中/.test(name)) return 500;
+    if (/合/.test(unit)) return 180;
+    if (/缶/.test(unit)) return 350;
+    if (/本/.test(unit)) return 500;
+    if (/杯/.test(unit)) return 100;
+    return null;
+}
+
+function extractExplicitServingMultiplier(userText, rawDataText, dbItem) {
+    const text = normalizeFoodText(`${userText} ${rawDataText}`).replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+    const unit = String(dbItem?.[3] || "");
+    const baseMl = getDbUnitMl(dbItem);
+
+    const literMatch = text.match(/([0-9]+(?:\.[0-9]+)?)\s*(?:l|L|リットル|りっとる)/);
+    if (literMatch && baseMl) return (parseFloat(literMatch[1]) * 1000) / baseMl;
+
+    const mlMatch = text.match(/([0-9]+(?:\.[0-9]+)?)\s*(?:ml|ｍｌ|ミリ|みり)/i);
+    if (mlMatch && baseMl) return parseFloat(mlMatch[1]) / baseMl;
+
+    const unitMatch = text.match(/([0-9]+(?:\.[0-9]+)?)\s*(杯|缶|本|個|パック|p)/i);
+    if (unitMatch) {
+        const amount = parseFloat(unitMatch[1]);
+        const spokenUnit = unitMatch[2].toLowerCase();
+        if ((spokenUnit === "杯" && unit.includes("杯")) ||
+            (spokenUnit === "缶" && unit.includes("缶")) ||
+            (spokenUnit === "本" && unit.includes("本")) ||
+            (spokenUnit === "個" && unit.includes("個")) ||
+            ((spokenUnit === "p" || spokenUnit === "パック") && /p|P|パック/.test(unit))) {
+            const baseAmount = parseFloat(unit.replace(/[^\d.]/g, "")) || 1;
+            return amount / baseAmount;
+        }
+    }
+
+    return null;
+}
+
+function applyDbKnownAmount(food, userText, rawDataText = "") {
+    const dbItem = findDbFoodForAIName(food.N, rawDataText);
+    if (!dbItem) return food;
+
+    const grams = extractExplicitGramForDbFood(userText, dbItem);
+    let multiplier = null;
+    let displayAmount = dbItem[3];
+
+    if (grams && grams > 0) {
+        const baseGram = parseFloat(String(dbItem[3]).replace(/[^\d.]/g, "")) || 100;
+        multiplier = grams / baseGram;
+        displayAmount = `${grams}g`;
+    } else {
+        multiplier = extractExplicitServingMultiplier(userText, rawDataText, dbItem);
+        const amountText = normalizeFoodText(`${userText} ${rawDataText}`).match(/([0-9]+(?:\.[0-9]+)?)\s*(l|L|リットル|りっとる|ml|ｍｌ|ミリ|みり|杯|缶|本|個|パック|p)/i);
+        if (amountText) displayAmount = `${amountText[1]}${amountText[2]}`;
+    }
+
+    if (!multiplier || multiplier <= 0) return food;
+
+    const p = Number(dbItem[4] || 0) * multiplier;
+    const f = Number(dbItem[5] || 0) * multiplier;
+    const c = Number(dbItem[6] || 0) * multiplier;
+    const a = getDbAlcoholBase(dbItem) * multiplier;
+    const cal = Math.round((p * 4) + (f * 9) + (c * 4) + (a * 7));
+
+    return {
+        ...food,
+        N: `${dbItem[1]}(${displayAmount})`,
         P: p,
         F: f,
         C: c,
@@ -725,6 +819,74 @@ function sanitizeAIVisibleReply(text, commandWasReturned) {
     return cleaned;
 }
 
+function getDbCandidatesForAI(text, limit = 18) {
+    if (typeof DB === 'undefined') return [];
+    const source = normalizeFoodText(text);
+    const sourceCompact = source.replace(/[()（）0-9.gｇグラムぐらむ\s]/g, "");
+    const genericKeys = new Set(["肉", "魚", "酒", "米", "水", "油", "鶏", "鳥", "牛", "豚", "卵", "飯", "お酒"]);
+    const candidates = [];
+    const seen = new Set();
+
+    const addByName = (name, score = 100) => {
+        const item = DB.find(x => x[1] === name);
+        if (item && !seen.has(item[1])) {
+            seen.add(item[1]);
+            candidates.push({ item, score });
+        }
+    };
+
+    if (/(白米|ごはん|ご飯|米|こめ|ライス)/.test(source)) addByName("白米", 200);
+    if (/(鶏むね|鶏胸|鳥胸|胸肉|むね肉|とりむね)/.test(source)) addByName("鶏むね(皮なし)", 200);
+    if (/(皮あり|かわあり)/.test(source) && /(鶏むね|鶏胸|胸肉|チキン)/.test(source)) addByName("鶏むね(皮あり)", 220);
+    if (/(たい焼き|たいやき)/.test(source)) addByName("たい焼き", 200);
+    if (/(チューハイ|酎ハイ|サワー)/.test(source)) addByName("缶チューハイ", 190);
+    if (/(ワイン)/.test(source)) addByName("ワイン(赤/白)", 190);
+    if (/(ラムネ|ラムネソーダ)/.test(source)) addByName("ラムネ", 180);
+    if (/(ハラミ|はらみ)/.test(source)) addByName("牛ハラミ", 170);
+    if (/(ステーキ)/.test(source)) addByName("牛ヒレ(赤身)", 160);
+    if (/(かしわ|カシワ)/.test(source)) addByName("鶏もも(皮あり)", 160);
+
+    DB.forEach(item => {
+        if (seen.has(item[1])) return;
+        const name = normalizeFoodText(item[1]).replace(/[()（）0-9.g\s]/g, "");
+        const keys = [name, ...String(item[2] || "").split(/\s+/).map(k => normalizeFoodText(k))]
+            .map(k => k.replace(/[()（）0-9.gｇグラムぐらむ\s]/g, ""))
+            .filter(k => k.length >= 2 && !genericKeys.has(k));
+        let bestScore = 0;
+        keys.forEach(key => {
+            if (!key) return;
+            if (sourceCompact.includes(key)) bestScore = Math.max(bestScore, 120 + key.length);
+            else if (key.length >= 4 && sourceCompact.includes(key.slice(0, 4))) bestScore = Math.max(bestScore, 60 + key.length);
+        });
+        if (bestScore > 0) {
+            seen.add(item[1]);
+            candidates.push({ item, score: bestScore });
+        }
+    });
+
+    return candidates
+        .sort((a, b) => b.score - a.score)
+        .slice(0, limit)
+        .map(x => x.item);
+}
+
+function buildDbCheatSheetForAI(text) {
+    const candidates = getDbCandidatesForAI(text);
+    if (candidates.length === 0) {
+        return "\n【カンペ(アプリ内DB)】\n該当候補なし。一般的な食品・料理名は一般栄養知識で1食分を推定し、市販品・チェーン店など公式値が必要なものだけ[UNKNOWN]を出してください。\n";
+    }
+    const lines = candidates.map(item => {
+        const unit = item[3] || "1人前";
+        const p = Number(item[4] || 0);
+        const f = Number(item[5] || 0);
+        const c = Number(item[6] || 0);
+        const cal = Number(item[7] || 0);
+        const a = getDbAlcoholBase(item);
+        return `- ${item[1]}(${unit}あたり): P${p}g, F${f}g, C${c}g, A${a.toFixed(1)}g, ${cal}kcal`;
+    });
+    return `\n【カンペ(アプリ内DB)】\nユーザー発言に近い食品候補です。入力された食品と意味的に同じ単品食品・飲料を指す場合だけ、このDB数値を優先してください。表記ゆれ、音声認識の揺れ、かな/漢字違い、一般的な別名は同一食品として扱ってよいです。ただし、入力が料理名・定食・弁当・セット・盛り合わせなどの場合、候補がその一部だけに一致していても料理全体の代わりに使ってはいけません。その場合は料理全体として一般的な1食分を推定し、P,F,C,Aは実際の合計値、倍率は1にしてください。DBを使う場合はP,F,C,Aを基準量あたりの値のまま出し、最後の倍率だけ食べた量に合わせてください。\n${lines.join("\n")}\n`;
+}
+
 // ▼▼▼ AI通信コア処理 ▼▼▼
 async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 = null) {
     const currentCal = lst.reduce((a, b) => a + b.Cal, 0); const currentP = lst.reduce((a, b) => a + b.P, 0); const currentF = lst.reduce((a, b) => a + b.F, 0); const currentC = lst.reduce((a, b) => a + b.C, 0);
@@ -756,13 +918,13 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
 
     let historyText = chatHistory.map(m => `${m.role === 'user' ? 'あなた' : 'たまちゃん'}: ${m.text}`).join('\n');
     let userPrefText = "";
-    let cheatSheetText = "";
+    let cheatSheetText = buildDbCheatSheetForAI(text);
 
     let basePrompt, voiceRule;
 
     if (isVoiceMode) {
         // 音声モード: たまちゃんのペルソナを完全に排除した専用プロンプトを使用
-        basePrompt = typeof VOICE_SYSTEM_PROMPT_AI_ONLY !== 'undefined' ? VOICE_SYSTEM_PROMPT_AI_ONLY : (typeof VOICE_SYSTEM_PROMPT !== 'undefined' ? VOICE_SYSTEM_PROMPT : 'あなたは食事記録専用の無機質なアシスタントです。');
+        basePrompt = typeof VOICE_SYSTEM_PROMPT !== 'undefined' ? VOICE_SYSTEM_PROMPT : (typeof VOICE_SYSTEM_PROMPT_AI_ONLY !== 'undefined' ? VOICE_SYSTEM_PROMPT_AI_ONLY : 'あなたは食事記録専用の無機質なアシスタントです。');
         voiceRule = '';
         // 音声モード時は直近2件のみ残す（訂正・修正に必要な文脈を保持）
         // ただし「たまちゃん」の口調が含まれる履歴は除外する
@@ -814,7 +976,10 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
         const dataMatches = [...botReply.matchAll(/\[DATA\]\s*([^|]+)\|(.+)/g)];
         dataMatches.forEach(m => {
             const parsed = parsePFCFromRaw(m[2]);
-            if (parsed) addedFoods.push({ ...parsed, time: isVoiceMode ? currentMealTime : m[1].trim() });
+            if (parsed) {
+                const normalized = applyDbKnownAmount(parsed, text, m[2]);
+                addedFoods.push({ ...normalized, time: isVoiceMode ? currentMealTime : m[1].trim() });
+            }
             botReply = botReply.replace(m[0], "");
         });
 
@@ -822,7 +987,10 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
         const repMatches = [...botReply.matchAll(/\[REPLACE\]\s*(\d+)\s*\|\s*([^|]+)\|(.+)/g)];
         repMatches.forEach(m => {
             const parsed = parsePFCFromRaw(m[3]);
-            if (parsed) replacedFoods.push({ targetId: parseInt(m[1], 10), data: { ...parsed, time: m[2].trim() } });
+            if (parsed) {
+                const normalized = applyDbKnownAmount(parsed, text, m[3]);
+                replacedFoods.push({ targetId: parseInt(m[1], 10), data: { ...normalized, time: m[2].trim() } });
+            }
             botReply = botReply.replace(m[0], "");
         });
 
