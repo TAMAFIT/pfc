@@ -2791,6 +2791,19 @@ body {
     border-radius: 0 0 24px 24px;
 }
 
+.app-build-version {
+    position: absolute;
+    left: 8px;
+    top: calc(7px + env(safe-area-inset-top));
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 9px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: 0;
+    pointer-events: none;
+    z-index: 1;
+}
+
 .header h1 {
     font-size: 22px;
     letter-spacing: 0;
