@@ -7,7 +7,7 @@ let deletedToday = { date: "", items: [] };
 const toHira = s => s.replace(/[\u30a1-\u30f6]/g, m => String.fromCharCode(m.charCodeAt(0) - 0x60));
 
 function parseNum(val) { if (typeof val !== 'string') return parseFloat(val) || 0; const half = val.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)); return parseFloat(half) || 0; }
-function getAutoTime() { const h = new Date().getHours(); if (h >= 4 && h < 11) return "朝"; if (h >= 11 && h < 16) return "昼"; return "晩"; }
+function getAutoTime() { const h = new Date().getHours(); if (h >= 4 && h < 11) return "朝"; if (h >= 11 && h < 17) return "昼"; return "晩"; }
 
 function getTodayKey() { const d = new Date(); return `${d.getFullYear()}-${("0" + (d.getMonth() + 1)).slice(-2)}-${("0" + d.getDate()).slice(-2)}`; }
 
