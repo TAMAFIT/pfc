@@ -729,6 +729,7 @@ function sanitizeAIVisibleReply(text, commandWasReturned) {
 async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 = null) {
     const currentCal = lst.reduce((a, b) => a + b.Cal, 0); const currentP = lst.reduce((a, b) => a + b.P, 0); const currentF = lst.reduce((a, b) => a + b.F, 0); const currentC = lst.reduce((a, b) => a + b.C, 0);
     const d = new Date(); const timeStr = `${d.getHours()}時${d.getMinutes()}分`; const alcStr = TG.alcMode ? "ON" : "OFF";
+    const currentMealTime = typeof getAutoTime === 'function' ? getAutoTime() : "昼";
 
     if (!imageBase64 && tryHandlePendingDeleteAllAnswer(text, loadingId)) {
         return "処理しました。";
@@ -751,7 +752,7 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
 
     const modeStr = isVoiceMode ? "\n【現在モード】[音声スピード記録モード]" : "\n【現在モード】[通常チャットモード]";
 
-    const context = `【目標】Cal:${TG.cal} P:${TG.p.toFixed(0)} F:${TG.f.toFixed(0)} C:${TG.c.toFixed(0)}\n【現在摂取】Cal:${currentCal} P:${currentP.toFixed(0)} F:${currentF.toFixed(0)} C:${currentC.toFixed(0)}\n【現在時刻】${timeStr}\n【酒飲みモード】${alcStr}${cheatStateContext}${modeStr}\n【現在の今日の食事記録リスト(ID付き)】\n${lst.length > 0 ? lst.map(x => `[ID: ${x.id}] ${x.time} | ${x.N} (${x.Cal}kcal)`).join('\n') : 'まだ記録なし'}`;
+    const context = `【目標】Cal:${TG.cal} P:${TG.p.toFixed(0)} F:${TG.f.toFixed(0)} C:${TG.c.toFixed(0)}\n【現在摂取】Cal:${currentCal} P:${currentP.toFixed(0)} F:${currentF.toFixed(0)} C:${currentC.toFixed(0)}\n【現在時刻】${timeStr}\n【推奨時間帯】${currentMealTime}\n【酒飲みモード】${alcStr}${cheatStateContext}${modeStr}\n【現在の今日の食事記録リスト(ID付き)】\n${lst.length > 0 ? lst.map(x => `[ID: ${x.id}] ${x.time} | ${x.N} (${x.Cal}kcal)`).join('\n') : 'まだ記録なし'}`;
 
     let historyText = chatHistory.map(m => `${m.role === 'user' ? 'あなた' : 'たまちゃん'}: ${m.text}`).join('\n');
     let userPrefText = "";
@@ -813,7 +814,7 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
         const dataMatches = [...botReply.matchAll(/\[DATA\]\s*([^|]+)\|(.+)/g)];
         dataMatches.forEach(m => {
             const parsed = parsePFCFromRaw(m[2]);
-            if (parsed) addedFoods.push({ ...parsed, time: m[1].trim() });
+            if (parsed) addedFoods.push({ ...parsed, time: isVoiceMode ? currentMealTime : m[1].trim() });
             botReply = botReply.replace(m[0], "");
         });
 

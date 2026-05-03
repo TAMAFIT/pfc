@@ -447,11 +447,14 @@ function ren() {
     const cleanFoodName = name => String(name || "").replace(/^🤖\s*/, "");
     const cleanUnit = unit => String(unit || "") === "AI" ? "" : String(unit || "");
     lst.forEach(x => { if (!times.includes(x.time)) x.time = "朝"; });
-    times.forEach(t => {
-        const items = lst.map((x, i) => ({ ...x, i })).filter(x => x.time === t); if (items.length === 0) return;
+    const hasLunch = lst.some(x => x.time === "昼");
+    const hasSnack = lst.some(x => x.time === "間食");
+    const renderTimes = hasLunch ? ["朝", "昼", "晩"] : times;
+    renderTimes.forEach(t => {
+        const items = lst.map((x, i) => ({ ...x, i })).filter(x => t === "昼" && hasLunch ? (x.time === "昼" || x.time === "間食") : x.time === t); if (items.length === 0) return;
         let tCal = 0, tP = 0, tF = 0, tC = 0, tA = 0; items.forEach(x => { tCal += x.Cal; tP += x.P; tF += x.F; tC += x.C; tA += (x.A || 0); totalCal += x.Cal; });
         const sec = document.createElement('details'); sec.className = 'tl-sec meal-card'; let aStr = (TG.alcMode && tA > 0) ? ` <span class="macro-a">A${tA.toFixed(0)}</span>` : "";
-        const mealLabel = t === "間食" ? "間食" : `${t}食`;
+        const mealLabel = t === "昼" && hasLunch && hasSnack ? "昼食・間食" : (t === "間食" ? "間食" : `${t}食`);
         sec.innerHTML = `<summary class="meal-summary ${t}"><div class="meal-left"><div><div class="meal-title"><span>${mealLabel}</span></div></div></div><div class="meal-macro-line"><span>P ${tP.toFixed(0)}g</span><span>F ${tF.toFixed(0)}g</span><span>C ${tC.toFixed(0)}g</span>${aStr}</div><div class="tl-stats"><strong>${tCal.toLocaleString()}</strong><em>kcal</em></div><span class="meal-chevron">›</span></summary><ul class="f-list meal-detail-list">${items.map(x => {
             let aTag = (TG.alcMode && x.A > 0) ? ` <span style="color:var(--my)">A${x.A.toFixed(1)}</span>` : ""; let isAlcClass = (TG.alcMode && x.A > 0) ? "alc" : "";
             const unitText = cleanUnit(x.U);
