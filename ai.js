@@ -297,9 +297,7 @@ window.sendVoiceChat = async function () {
     addChatMsg('user', text); const loadingId = addChatMsg('bot', 'データ処理中...');
 
     try {
-        if (!tryHandleLocalVoiceMealLog(text, loadingId)) {
-            await processAIChat(text, loadingId, true);
-        }
+        await processAIChat(text, loadingId, true);
     } finally {
         vStatusText.innerText = "マイクOFF";
         inputEl.disabled = false;
@@ -755,26 +753,15 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
 
     const context = `【目標】Cal:${TG.cal} P:${TG.p.toFixed(0)} F:${TG.f.toFixed(0)} C:${TG.c.toFixed(0)}\n【現在摂取】Cal:${currentCal} P:${currentP.toFixed(0)} F:${currentF.toFixed(0)} C:${currentC.toFixed(0)}\n【現在時刻】${timeStr}\n【酒飲みモード】${alcStr}${cheatStateContext}${modeStr}\n【現在の今日の食事記録リスト(ID付き)】\n${lst.length > 0 ? lst.map(x => `[ID: ${x.id}] ${x.time} | ${x.N} (${x.Cal}kcal)`).join('\n') : 'まだ記録なし'}`;
 
-    let historyText = chatHistory.map(m => `${m.role === 'user' ? 'あなた' : 'たまちゃん'}: ${m.text}`).join('\n'); let userPrefText = "";
-    if (myFoods && myFoods.length > 0) { userPrefText += `\n【ユーザーのMy食品】\n${myFoods.map(x => `- ${x.N} (P${x.P} F${x.F} C${x.C} ${x.Cal}kcal)`).join('\n')}\n`; }
-    if (fav && fav.length > 0 && typeof DB !== 'undefined') { let favNames = fav.map(id => DB[id] ? DB[id][1] : "").filter(n => n); if (favNames.length > 0) { userPrefText += `【ユーザーのお気に入り】\n${favNames.join(', ')}\n`; } }
-
+    let historyText = chatHistory.map(m => `${m.role === 'user' ? 'あなた' : 'たまちゃん'}: ${m.text}`).join('\n');
+    let userPrefText = "";
     let cheatSheetText = "";
-    if (typeof DB !== 'undefined') {
-        let matchedFoods = []; const normalizedText = toHira(text).toLowerCase();
-        DB.forEach(x => {
-            const nameHira = toHira(x[1]).toLowerCase(); const keys = x[2] ? x[2].split(' ') : []; let isMatch = false;
-            if (normalizedText.includes(nameHira)) isMatch = true; else { for (let k of keys) { if (!k) continue; let kHira = toHira(k).toLowerCase(); if (normalizedText.includes(kHira)) { isMatch = true; break; } } }
-            if (isMatch) matchedFoods.push(`- ${x[1]}(${x[3]}あたり): P ${x[4]}g, F ${x[5]}g, C ${x[6]}g, カロリー ${x[7]}kcal`);
-        });
-        if (matchedFoods.length > 0) cheatSheetText = `\n【カンペ(公式データ)】\n${matchedFoods.slice(0, 5).join('\n')}\n`;
-    }
 
     let basePrompt, voiceRule;
 
     if (isVoiceMode) {
         // 音声モード: たまちゃんのペルソナを完全に排除した専用プロンプトを使用
-        basePrompt = typeof VOICE_SYSTEM_PROMPT !== 'undefined' ? VOICE_SYSTEM_PROMPT : 'あなたは食事記録専用の無機質なアシスタントです。';
+        basePrompt = typeof VOICE_SYSTEM_PROMPT_AI_ONLY !== 'undefined' ? VOICE_SYSTEM_PROMPT_AI_ONLY : (typeof VOICE_SYSTEM_PROMPT !== 'undefined' ? VOICE_SYSTEM_PROMPT : 'あなたは食事記録専用の無機質なアシスタントです。');
         voiceRule = '';
         // 音声モード時は直近2件のみ残す（訂正・修正に必要な文脈を保持）
         // ただし「たまちゃん」の口調が含まれる履歴は除外する
@@ -826,7 +813,7 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
         const dataMatches = [...botReply.matchAll(/\[DATA\]\s*([^|]+)\|(.+)/g)];
         dataMatches.forEach(m => {
             const parsed = parsePFCFromRaw(m[2]);
-            if (parsed) addedFoods.push({ ...applyExplicitUserGramAmount(parsed, text, m[2]), time: m[1].trim() });
+            if (parsed) addedFoods.push({ ...parsed, time: m[1].trim() });
             botReply = botReply.replace(m[0], "");
         });
 
@@ -834,7 +821,7 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
         const repMatches = [...botReply.matchAll(/\[REPLACE\]\s*(\d+)\s*\|\s*([^|]+)\|(.+)/g)];
         repMatches.forEach(m => {
             const parsed = parsePFCFromRaw(m[3]);
-            if (parsed) replacedFoods.push({ targetId: parseInt(m[1], 10), data: { ...applyExplicitUserGramAmount(parsed, text, m[3]), time: m[2].trim() } });
+            if (parsed) replacedFoods.push({ targetId: parseInt(m[1], 10), data: { ...parsed, time: m[2].trim() } });
             botReply = botReply.replace(m[0], "");
         });
 
