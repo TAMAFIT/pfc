@@ -375,6 +375,15 @@ function getDbFoodPattern(dbItem) {
     return new RegExp(keys.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"));
 }
 
+function getDbFoodAliases(dbItem) {
+    if (!dbItem) return [];
+    const genericKeys = new Set(["肉", "魚", "酒", "米", "水", "油", "鶏", "鳥", "牛", "豚", "卵", "飯", "お酒", "野菜", "やさい", "サラダ"]);
+    const rawKeys = [dbItem[1], ...String(dbItem[2] || "").split(/\s+/)];
+    return [...new Set(rawKeys
+        .map(k => normalizeFoodText(k).replace(/[()（）0-9.gｇグラムぐらむ\s]/g, ""))
+        .filter(k => k.length >= 2 && !genericKeys.has(k)))];
+}
+
 function extractExplicitGramForDbFood(userText, dbItem) {
     if (!dbItem || !String(dbItem[3]).includes("g")) return null;
     const text = normalizeFoodText(userText).replace(/グラム|ぐらむ/g, "g");
@@ -391,6 +400,21 @@ function extractExplicitGramForDbFood(userText, dbItem) {
         const after = text.slice(foodMatch.index, foodMatch.index + 24);
         const gramAfter = after.match(/([0-9]+(?:\.[0-9]+)?)\s*g/);
         if (gramAfter) return parseFloat(gramAfter[1]);
+    }
+
+    const aliases = getDbFoodAliases(dbItem);
+    const gramSource = "([0-9]+(?:\\.[0-9]+)?)\\s*g";
+    for (const alias of aliases) {
+        const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const afterMatch = text.match(new RegExp(`${escaped}[^0-9]{0,10}${gramSource}`));
+        if (afterMatch) return parseFloat(afterMatch[1]);
+        const beforeMatch = text.match(new RegExp(`${gramSource}[^\\p{L}\\p{N}]{0,10}${escaped}`, "u"));
+        if (beforeMatch) return parseFloat(beforeMatch[1]);
+    }
+
+    const allGramMatches = [...text.matchAll(/([0-9]+(?:\.[0-9]+)?)\s*g/g)];
+    if (allGramMatches.length === 1 && aliases.some(alias => text.includes(alias))) {
+        return parseFloat(allGramMatches[0][1]);
     }
 
     return null;
