@@ -894,8 +894,8 @@ function getDbCandidatesForAI(text, limit = 18) {
         .map(x => x.item);
 }
 
-function buildDbCheatSheetForAI(text) {
-    const candidates = getDbCandidatesForAI(text);
+function buildDbCheatSheetForAI(text, limit = 18) {
+    const candidates = getDbCandidatesForAI(text, limit);
     if (candidates.length === 0) {
         return "\n【カンペ(アプリ内DB)】\n該当候補なし。一般的な食品・料理名は一般栄養知識で1食分を推定し、市販品・チェーン店など公式値が必要なものだけ[UNKNOWN]を出してください。\n";
     }
@@ -909,6 +909,10 @@ function buildDbCheatSheetForAI(text) {
         return `- ${item[1]}(${unit}あたり): P${p}g, F${f}g, C${c}g, A${a.toFixed(1)}g, ${cal}kcal`;
     });
     return `\n【カンペ(アプリ内DB)】\nユーザー発言に近い食品候補です。入力された食品と意味的に同じ単品食品・飲料を指す場合だけ、このDB数値を優先してください。表記ゆれ、音声認識の揺れ、かな/漢字違い、一般的な別名は同一食品として扱ってよいです。ただし、入力が料理名・定食・弁当・セット・盛り合わせなどの場合、候補がその一部だけに一致していても料理全体の代わりに使ってはいけません。その場合は通常チャットで成分表を答える時と同じ基準で、一般的な外食/家庭料理の1食分として推定してください。DBの単品候補に引っ張られて脂質・炭水化物・カロリーを低く見積もってはいけません。料理全体を推定する場合、P,F,C,Aは実際の合計値、倍率は1にしてください。DBを使う場合はP,F,C,Aを基準量あたりの値のまま出し、最後の倍率だけ食べた量に合わせてください。\n${lines.join("\n")}\n`;
+}
+
+function needsVoiceRecordContext(text) {
+    return /(修正|訂正|変更|間違|やっぱり|さっき|直前|今の|それ|消して|削除|取り消|なしで|戻して|皮あり|皮なし|皮付き|皮を|かわあり|かわなし)/.test(String(text || ""));
 }
 
 // ▼▼▼ AI通信コア処理 ▼▼▼
@@ -937,22 +941,26 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
     }
 
     const modeStr = isVoiceMode ? "\n【現在モード】[音声スピード記録モード]" : "\n【現在モード】[通常チャットモード]";
+    const needsVoiceContext = isVoiceMode && needsVoiceRecordContext(text);
+    const recordListText = (!isVoiceMode || needsVoiceContext)
+        ? (lst.length > 0 ? lst.map(x => `[ID: ${x.id}] ${x.time} | ${x.N} (${x.Cal}kcal)`).join('\n') : 'まだ記録なし')
+        : '新規記録のため省略';
 
-    const context = `【目標】Cal:${TG.cal} P:${TG.p.toFixed(0)} F:${TG.f.toFixed(0)} C:${TG.c.toFixed(0)}\n【現在摂取】Cal:${currentCal} P:${currentP.toFixed(0)} F:${currentF.toFixed(0)} C:${currentC.toFixed(0)}\n【現在時刻】${timeStr}\n【推奨時間帯】${currentMealTime}\n【酒飲みモード】${alcStr}${cheatStateContext}${modeStr}\n【現在の今日の食事記録リスト(ID付き)】\n${lst.length > 0 ? lst.map(x => `[ID: ${x.id}] ${x.time} | ${x.N} (${x.Cal}kcal)`).join('\n') : 'まだ記録なし'}`;
+    const context = `【目標】Cal:${TG.cal} P:${TG.p.toFixed(0)} F:${TG.f.toFixed(0)} C:${TG.c.toFixed(0)}\n【現在摂取】Cal:${currentCal} P:${currentP.toFixed(0)} F:${currentF.toFixed(0)} C:${currentC.toFixed(0)}\n【現在時刻】${timeStr}\n【推奨時間帯】${currentMealTime}\n【酒飲みモード】${alcStr}${cheatStateContext}${modeStr}\n【現在の今日の食事記録リスト(ID付き)】\n${recordListText}`;
 
     let historyText = chatHistory.map(m => `${m.role === 'user' ? 'あなた' : 'たまちゃん'}: ${m.text}`).join('\n');
     let userPrefText = "";
-    let cheatSheetText = buildDbCheatSheetForAI(text);
+    let cheatSheetText = buildDbCheatSheetForAI(text, isVoiceMode ? 6 : 18);
 
     let basePrompt, voiceRule;
 
     if (isVoiceMode) {
         // 音声モード: たまちゃんのペルソナを完全に排除した専用プロンプトを使用
-        basePrompt = typeof VOICE_SYSTEM_PROMPT !== 'undefined' ? VOICE_SYSTEM_PROMPT : (typeof VOICE_SYSTEM_PROMPT_AI_ONLY !== 'undefined' ? VOICE_SYSTEM_PROMPT_AI_ONLY : 'あなたは食事記録専用の無機質なアシスタントです。');
+        basePrompt = typeof VOICE_SYSTEM_PROMPT_LITE !== 'undefined' ? VOICE_SYSTEM_PROMPT_LITE : (typeof VOICE_SYSTEM_PROMPT !== 'undefined' ? VOICE_SYSTEM_PROMPT : (typeof VOICE_SYSTEM_PROMPT_AI_ONLY !== 'undefined' ? VOICE_SYSTEM_PROMPT_AI_ONLY : 'あなたは食事記録専用の無機質なアシスタントです。'));
         voiceRule = '';
         // 音声モード時は直近2件のみ残す（訂正・修正に必要な文脈を保持）
         // ただし「たまちゃん」の口調が含まれる履歴は除外する
-        const recentHistory = chatHistory.slice(-2);
+        const recentHistory = needsVoiceContext ? chatHistory.slice(-2) : [];
         historyText = recentHistory.map(m => `${m.role === 'user' ? 'ユーザー' : 'システム'}: ${m.text}`).join('\n');
     } else {
         basePrompt = typeof SYSTEM_PROMPT !== 'undefined' ? SYSTEM_PROMPT : 'あなたは「たまちゃん」です。';
