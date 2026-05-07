@@ -1090,6 +1090,9 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
             else if (addedFoods.length > 0) botReply = "ばっちり記録したたま！";
             else botReply = "処理したたま！";
         }
+        if (isVoiceMode) {
+            botReply += `<br><details style="margin-top:8px; font-size:11px; color:#64748b;"><summary style="cursor:pointer;">AI生出力</summary><pre style="white-space:pre-wrap; word-break:break-word; margin:6px 0 0;">${escapeHTML(rawText)}</pre></details>`;
+        }
 
         removeMsg(loadingId); const newMsgId = addChatMsg('bot', botReply, true);
 
