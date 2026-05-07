@@ -982,8 +982,8 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
         const recentHistory = needsVoiceContext ? chatHistory.slice(-2) : [];
         historyText = recentHistory.map(m => `${m.role === 'user' ? 'ユーザー' : 'システム'}: ${m.text}`).join('\n');
     } else {
-        basePrompt = typeof SYSTEM_PROMPT !== 'undefined' ? SYSTEM_PROMPT : 'あなたは「たまちゃん」です。';
-        voiceRule = '・「たまちゃん」としての純粋なセリフと、必要なシステムコマンドのみを出力してください。\n⚠️【重要】「記録して」「追加して」と言われない限り、絶対に[DATA]タグを出力しないでください！';
+        basePrompt = typeof CONSULT_SYSTEM_PROMPT !== 'undefined' ? CONSULT_SYSTEM_PROMPT : 'あなたは「たまちゃんコーチ」です。日本語で自然に、栄養や食事の相談に普通に答えてください。';
+        voiceRule = '';
     }
 
     const prompt = `${basePrompt}\n=== 現在の状況 ===\n${context}\n=== 会話履歴 ===\n${historyText}\n${cheatSheetText}\n${userPrefText}\n=== ユーザーの発言 ===\n${text}\n\n【絶対ルール】\n・システムログ、AIとしての思考プロセス、プロンプトの解説は一切出力しないでください。\n${voiceRule}`;
