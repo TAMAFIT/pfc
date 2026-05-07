@@ -369,6 +369,7 @@ function isClearlyBrokenNutrition(food) {
     if (food.P > 300 || food.F > 300 || food.C > 500 || food.A > 250 || food.Cal > 3000) return true;
     const name = String(food.N || "");
     const looksAlcohol = /(ワイン|ビール|チューハイ|酎ハイ|サワー|ハイボール|日本酒|焼酎|ウイスキー|梅酒|酒|アルコール)/.test(name);
+    if (/ワイン/.test(name) && food.C > 60) return true;
     if (looksAlcohol && (food.C > 200 || food.A > 200 || food.Cal > 2000)) return true;
     return false;
 }
