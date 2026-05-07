@@ -27,13 +27,13 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260507-build-v13">
+    <link rel="stylesheet" href="style.css?v=20260507-build-v14">
 </head>
 
 <body>
 
     <div class="header">
-        <div class="app-build-version" aria-label="アプリバージョン">V13</div>
+        <div class="app-build-version" aria-label="アプリバージョン">V14</div>
         <h1>
             <img src="tama_chara_mini.png" alt="キャラ"
                 style="height:40px; vertical-align:middle; margin-right:10px; border-radius:50%; border:2px solid #fff;">
@@ -124,6 +124,14 @@
                 <div class="alc-toggle">
                     <input type="checkbox" id="alc-mode-chk" onchange="toggleAlcMode()"> <label for="alc-mode-chk"
                         style="margin:0;cursor:pointer;">🍺 酒飲みモード (PFCA管理)</label>
+                </div>
+                <div class="alc-toggle" style="margin-top:8px; align-items:center; justify-content:space-between; gap:10px;">
+                    <label for="ai-model-select" style="margin:0;cursor:pointer; font-weight:700;">AIモデル</label>
+                    <select id="ai-model-select" class="pfc-sel" onchange="setAIModelPreference(this.value)"
+                        style="padding:6px 8px; font-size:13px; border-radius:8px; border:1px solid #e5dce3; background:#fff; color:#102033;">
+                        <option value="gemini25-lite">2.5 Flash Lite</option>
+                        <option value="gemini31-lite">3.1 Flash Lite</option>
+                    </select>
                 </div>
             </div>
         </div>
@@ -859,7 +867,7 @@
     <script src="database.js?v=20260503-alcohol-a01"></script>
     <script src="tamachan-data.js?v=20260507-voice-chatlike01"></script>
     <script src="app.js?v=20260503-db-main01"></script>
-    <script src="ai.js?v=20260507-voice-guard02"></script>
+    <script src="ai.js?v=20260507-model-toggle01"></script>
 
     <!-- ▼ 新規追加: アルバムUIレンダリング ▼ -->
     <script src="main-inline.js?v=20260501-cheat-inline01"></script>

@@ -10,6 +10,7 @@ let speechFinalText = "";
 let speechHadResult = false;
 let speechResultCallback = null;
 let voiceAutoSend = localStorage.getItem('tf_voice_auto_send') !== 'false';
+const AI_MODEL_STORAGE_KEY = 'tf_ai_model_preference';
 let pendingDeleteAllToday = false;
 let lastTamaChatSendText = "";
 let lastTamaChatSendAt = 0;
@@ -98,6 +99,26 @@ window.toggleVoiceAutoSend = function () {
 };
 
 document.addEventListener('DOMContentLoaded', syncVoiceAutoSendUI);
+
+function getAIModelPreference() {
+    const saved = localStorage.getItem(AI_MODEL_STORAGE_KEY);
+    return saved === 'gemini31-lite' ? 'gemini31-lite' : 'gemini25-lite';
+}
+
+window.setAIModelPreference = function (value) {
+    const next = value === 'gemini31-lite' ? 'gemini31-lite' : 'gemini25-lite';
+    localStorage.setItem(AI_MODEL_STORAGE_KEY, next);
+    const sel = document.getElementById('ai-model-select');
+    if (sel && sel.value !== next) sel.value = next;
+    showToast(next === 'gemini31-lite' ? 'AIモデル: 3.1 Flash Lite' : 'AIモデル: 2.5 Flash Lite');
+};
+
+function initAIModelPreferenceUI() {
+    const sel = document.getElementById('ai-model-select');
+    if (sel) sel.value = getAIModelPreference();
+}
+
+document.addEventListener('DOMContentLoaded', initAIModelPreferenceUI);
 
 document.addEventListener('visibilitychange', () => { if (document.hidden) forceStopMic(); });
 window.addEventListener('pagehide', () => forceStopMic());
@@ -1004,7 +1025,11 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
     if (chatHistory.length > 6) chatHistory.shift();
 
     try {
-        const payload = { contents: [{ parts: [{ text: prompt }] }], taskType: imageBase64 ? "image" : (isVoiceMode ? "voice" : "chat") };
+        const payload = {
+            contents: [{ parts: [{ text: prompt }] }],
+            taskType: imageBase64 ? "image" : (isVoiceMode ? "voice" : "chat"),
+            modelPreference: getAIModelPreference()
+        };
         if (imageBase64) {
             payload.imageBase64 = imageBase64;
         }
