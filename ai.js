@@ -362,6 +362,17 @@ function parseDirectPFCLine(name, pRaw, fRaw, cRaw, aRaw, calRaw) {
     return { N: foodName, P: p, F: f, C: c, A: a, Cal: Math.round(cal) };
 }
 
+function isClearlyBrokenNutrition(food) {
+    if (!food) return true;
+    const values = [food.P, food.F, food.C, food.A, food.Cal];
+    if (values.some(v => !Number.isFinite(Number(v)) || Number(v) < 0)) return true;
+    if (food.P > 300 || food.F > 300 || food.C > 500 || food.A > 250 || food.Cal > 3000) return true;
+    const name = String(food.N || "");
+    const looksAlcohol = /(ワイン|ビール|チューハイ|酎ハイ|サワー|ハイボール|日本酒|焼酎|ウイスキー|梅酒|酒|アルコール)/.test(name);
+    if (looksAlcohol && (food.C > 200 || food.A > 200 || food.Cal > 2000)) return true;
+    return false;
+}
+
 function normalizeFoodText(str) {
     return toHira(String(str || ""))
         .replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0))
@@ -1007,6 +1018,7 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
         let addedFoods = [];
         let replacedFoods = [];
         let deleteIds = [];
+        let blockedFoods = [];
         let unknownFoods = [];
         let recipeKeywords = null;
 
@@ -1026,7 +1038,10 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
         const data2Matches = [...botReply.matchAll(/\[DATA2\]\s*([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|([^\n]+)/g)];
         data2Matches.forEach(m => {
             const parsed = parseDirectPFCLine(m[2], m[3], m[4], m[5], m[6], m[7]);
-            if (parsed) addedFoods.push({ ...parsed, time: isVoiceMode ? currentMealTime : m[1].trim() });
+            if (parsed) {
+                if (isVoiceMode && isClearlyBrokenNutrition(parsed)) blockedFoods.push(parsed);
+                else addedFoods.push({ ...parsed, time: isVoiceMode ? currentMealTime : m[1].trim() });
+            }
             botReply = botReply.replace(m[0], "");
         });
 
@@ -1034,10 +1049,14 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
         rep2Matches.forEach(m => {
             const parsed = parseDirectPFCLine(m[3], m[4], m[5], m[6], m[7], m[8]);
             if (parsed) {
-                const targetId = parseInt(m[1], 10);
-                const existing = isVoiceMode ? lst.find(x => Number(x.id) === targetId) : null;
-                const nextTime = isVoiceMode ? (existing?.time || currentMealTime) : m[2].trim();
-                replacedFoods.push({ targetId, data: { ...parsed, time: nextTime } });
+                if (isVoiceMode && isClearlyBrokenNutrition(parsed)) {
+                    blockedFoods.push(parsed);
+                } else {
+                    const targetId = parseInt(m[1], 10);
+                    const existing = isVoiceMode ? lst.find(x => Number(x.id) === targetId) : null;
+                    const nextTime = isVoiceMode ? (existing?.time || currentMealTime) : m[2].trim();
+                    replacedFoods.push({ targetId, data: { ...parsed, time: nextTime } });
+                }
             }
             botReply = botReply.replace(m[0], "");
         });
@@ -1067,7 +1086,7 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
             botReply = botReply.replace(m[0], "");
         });
 
-        const commandWasReturned = addedFoods.length > 0 || replacedFoods.length > 0 || deleteIds.length > 0;
+        const commandWasReturned = addedFoods.length > 0 || replacedFoods.length > 0 || deleteIds.length > 0 || blockedFoods.length > 0;
         const allowMutation = isVoiceMode;
         if (commandWasReturned && !allowMutation) {
             addedFoods = [];
@@ -1088,6 +1107,7 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
             if (deleteIds.length > 0) botReply = "削除したたま！";
             else if (replacedFoods.length > 0) botReply = "修正したたま！";
             else if (addedFoods.length > 0) botReply = "ばっちり記録したたま！";
+            else if (blockedFoods.length > 0) botReply = "数値が大きすぎるため、登録を止めました。もう一度短く言ってください。";
             else botReply = "処理したたま！";
         }
         if (isVoiceMode) {
