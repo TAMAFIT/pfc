@@ -844,6 +844,8 @@ function looksLikeLeakedReasoning(text) {
 function sanitizeAIVisibleReply(text, commandWasReturned) {
     let cleaned = String(text || "")
         .replace(/\[SYSTEM\].*/gi, "")
+        .replace(/\[DATA2\].*/gi, "")
+        .replace(/\[REPLACE2\].*/gi, "")
         .replace(/\[DATA\].*/gi, "")
         .replace(/\[REPLACE\].*/gi, "")
         .replace(/\[DELETE\].*/gi, "")
@@ -984,6 +986,10 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
         voiceRule = '・「たまちゃん」としての純粋なセリフと、必要なシステムコマンドのみを出力してください。\n⚠️【重要】「記録して」「追加して」と言われない限り、絶対に[DATA]タグを出力しないでください！';
     }
 
+    if (!isVoiceMode) {
+        voiceRule = '通常チャットは相談専用です。ユーザーが「食べた」「記録して」「追加して」「消して」「修正して」と言っても、食事記録の追加・修正・削除は絶対に行わないでください。[DATA]、[DATA2]、[REPLACE]、[REPLACE2]、[DELETE] は絶対に出力しないでください。必要なら「記録はホームの音声で記録ボタンからできます」と短く案内してください。';
+    }
+
     const prompt = `${basePrompt}\n=== 現在の状況 ===\n${context}\n=== 会話履歴 ===\n${historyText}\n${cheatSheetText}\n${userPrefText}\n=== ユーザーの発言 ===\n${text}\n\n【絶対ルール】\n・システムログ、AIとしての思考プロセス、プロンプトの解説は一切出力しないでください。\n${voiceRule}`;
 
     chatHistory.push({ role: 'user', text: text });
@@ -1066,7 +1072,7 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
         });
 
         const commandWasReturned = addedFoods.length > 0 || replacedFoods.length > 0 || deleteIds.length > 0;
-        const allowMutation = isVoiceMode || hasMutationIntent(text);
+        const allowMutation = isVoiceMode;
         if (commandWasReturned && !allowMutation) {
             addedFoods = [];
             replacedFoods = [];
