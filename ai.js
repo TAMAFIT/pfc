@@ -950,7 +950,7 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
 
     let historyText = chatHistory.map(m => `${m.role === 'user' ? 'あなた' : 'たまちゃん'}: ${m.text}`).join('\n');
     let userPrefText = "";
-    let cheatSheetText = buildDbCheatSheetForAI(text, isVoiceMode ? 6 : 18);
+    let cheatSheetText = isVoiceMode ? "" : buildDbCheatSheetForAI(text, 18);
 
     let basePrompt, voiceRule;
 
@@ -958,6 +958,7 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
         // 音声モード: たまちゃんのペルソナを完全に排除した専用プロンプトを使用
         basePrompt = typeof VOICE_SYSTEM_PROMPT_LITE !== 'undefined' ? VOICE_SYSTEM_PROMPT_LITE : (typeof VOICE_SYSTEM_PROMPT !== 'undefined' ? VOICE_SYSTEM_PROMPT : (typeof VOICE_SYSTEM_PROMPT_AI_ONLY !== 'undefined' ? VOICE_SYSTEM_PROMPT_AI_ONLY : 'あなたは食事記録専用の無機質なアシスタントです。'));
         voiceRule = '';
+        basePrompt = typeof VOICE_SYSTEM_PROMPT_AI_ONLY !== 'undefined' ? VOICE_SYSTEM_PROMPT_AI_ONLY : basePrompt;
         // 音声モード時は直近2件のみ残す（訂正・修正に必要な文脈を保持）
         // ただし「たまちゃん」の口調が含まれる履歴は除外する
         const recentHistory = needsVoiceContext ? chatHistory.slice(-2) : [];
