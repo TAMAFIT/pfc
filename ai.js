@@ -346,6 +346,22 @@ function parsePFCFromRaw(dRaw) {
     return { N: name, P: p, F: f, C: c, A: a, Cal: cal };
 }
 
+function parseDirectPFCValue(value) {
+    const match = String(value || "").replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).match(/-?\d+(?:\.\d+)?/);
+    return match ? parseFloat(match[0]) : 0;
+}
+
+function parseDirectPFCLine(name, pRaw, fRaw, cRaw, aRaw, calRaw) {
+    const foodName = String(name || "").replace(/^["']|["']$/g, "").trim();
+    if (!foodName) return null;
+    const p = parseDirectPFCValue(pRaw);
+    const f = parseDirectPFCValue(fRaw);
+    const c = parseDirectPFCValue(cRaw);
+    const a = parseDirectPFCValue(aRaw);
+    const cal = parseDirectPFCValue(calRaw) || Math.round(p * 4 + f * 9 + c * 4 + a * 7);
+    return { N: foodName, P: p, F: f, C: c, A: a, Cal: Math.round(cal) };
+}
+
 function normalizeFoodText(str) {
     return toHira(String(str || ""))
         .replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0))
@@ -1005,12 +1021,31 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
         const delMatches = [...botReply.matchAll(/\[DELETE\]\s*(\d+)/g)];
         delMatches.forEach(m => { deleteIds.push(parseInt(m[1], 10)); botReply = botReply.replace(m[0], ""); });
 
+        const data2Matches = [...botReply.matchAll(/\[DATA2\]\s*([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|([^\n]+)/g)];
+        data2Matches.forEach(m => {
+            const parsed = parseDirectPFCLine(m[2], m[3], m[4], m[5], m[6], m[7]);
+            if (parsed) addedFoods.push({ ...parsed, time: isVoiceMode ? currentMealTime : m[1].trim() });
+            botReply = botReply.replace(m[0], "");
+        });
+
+        const rep2Matches = [...botReply.matchAll(/\[REPLACE2\]\s*(\d+)\s*\|\s*([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|([^\n]+)/g)];
+        rep2Matches.forEach(m => {
+            const parsed = parseDirectPFCLine(m[3], m[4], m[5], m[6], m[7], m[8]);
+            if (parsed) {
+                const targetId = parseInt(m[1], 10);
+                const existing = isVoiceMode ? lst.find(x => Number(x.id) === targetId) : null;
+                const nextTime = isVoiceMode ? (existing?.time || currentMealTime) : m[2].trim();
+                replacedFoods.push({ targetId, data: { ...parsed, time: nextTime } });
+            }
+            botReply = botReply.replace(m[0], "");
+        });
+
         // ★[DATA]の複数抽出（共通パーサー使用）
         const dataMatches = [...botReply.matchAll(/\[DATA\]\s*([^|]+)\|(.+)/g)];
         dataMatches.forEach(m => {
             const parsed = parsePFCFromRaw(m[2]);
             if (parsed) {
-                const normalized = applyDbKnownAmount(parsed, text, m[2]);
+                const normalized = isVoiceMode ? parsed : applyDbKnownAmount(parsed, text, m[2]);
                 addedFoods.push({ ...normalized, time: isVoiceMode ? currentMealTime : m[1].trim() });
             }
             botReply = botReply.replace(m[0], "");
@@ -1022,7 +1057,7 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
             const parsed = parsePFCFromRaw(m[3]);
             if (parsed) {
                 const targetId = parseInt(m[1], 10);
-                const normalized = applyDbKnownAmount(parsed, text, m[3]);
+                const normalized = isVoiceMode ? parsed : applyDbKnownAmount(parsed, text, m[3]);
                 const existing = isVoiceMode ? lst.find(x => Number(x.id) === targetId) : null;
                 const nextTime = isVoiceMode ? (existing?.time || currentMealTime) : m[2].trim();
                 replacedFoods.push({ targetId, data: { ...normalized, time: nextTime } });
