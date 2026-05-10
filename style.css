@@ -5668,8 +5668,12 @@ body {
 }
 
 .voice-result-card.is-removed {
-    opacity: 0.48;
     filter: grayscale(0.15);
+}
+
+.voice-result-card.is-removed .voice-result-main,
+.voice-result-card.is-removed .voice-result-actions {
+    opacity: 0.42;
 }
 
 .voice-result-name {
@@ -5742,10 +5746,6 @@ body {
     justify-content: center;
     border-radius: 14px;
     background: rgba(248, 250, 252, 0.54);
-}
-
-.voice-result-card.is-removed .voice-result-actions {
-    visibility: hidden;
 }
 
 .voice-result-card.is-removed .voice-result-restore-layer {
