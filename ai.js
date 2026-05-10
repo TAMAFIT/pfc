@@ -293,6 +293,80 @@ function removeMsg(id) {
     const el2 = document.getElementById(id + '-v'); if (el2) el2.remove();
 }
 
+function stripAIPrefix(name) {
+    return String(name || "").replace(/^🤖\s*/, "").trim();
+}
+
+function formatFoodSummary(food) {
+    const p = Number(food.P || 0).toFixed(1).replace(/\.0$/, "");
+    const f = Number(food.F || 0).toFixed(1).replace(/\.0$/, "");
+    const c = Number(food.C || 0).toFixed(1).replace(/\.0$/, "");
+    const a = Number(food.A || 0);
+    const aText = a > 0 ? ` <span class="voice-log-a">A ${a.toFixed(1).replace(/\.0$/, "")}g</span>` : "";
+    return `<span>P ${p}g</span><span>F ${f}g</span><span>C ${c}g</span>${aText}<strong>${Math.round(Number(food.Cal || 0)).toLocaleString()}kcal</strong>`;
+}
+
+function buildVoiceResultCards(items) {
+    const rows = (items || []).filter(Boolean).map(item => {
+        const safeName = escapeHTML(stripAIPrefix(item.N));
+        return `<div class="voice-result-card" data-log-id="${Number(item.id)}">
+            <div class="voice-result-main">
+                <div class="voice-result-name">${safeName}</div>
+                <div class="voice-result-macros">${formatFoodSummary(item)}</div>
+            </div>
+            <div class="voice-result-actions">
+                <button type="button" onclick="undoVoiceFood(${Number(item.id)})">取り消し</button>
+                <button type="button" onclick="redoVoiceFood(${Number(item.id)})">入れ直す</button>
+            </div>
+        </div>`;
+    }).join("");
+    return rows ? `<div class="voice-result-list">${rows}</div>` : "";
+}
+
+function appendToBotMessage(messageId, html) {
+    if (!html) return;
+    const msgEl = document.getElementById(messageId)?.querySelector('.text');
+    if (msgEl) msgEl.innerHTML += html;
+    const vMsgEl = document.getElementById(messageId + '-v')?.querySelector('.text');
+    if (vMsgEl) vMsgEl.innerHTML += html;
+}
+
+window.undoVoiceFood = function (id) {
+    const targetId = Number(id);
+    if (!targetId) return;
+    const count = typeof deleteLogIds === 'function' ? deleteLogIds([targetId], "voice-card", true) : 0;
+    if (count > 0) {
+        document.querySelectorAll(`.voice-result-card[data-log-id="${targetId}"]`).forEach(card => {
+            card.classList.add('is-removed');
+            const actions = card.querySelector('.voice-result-actions');
+            if (actions) actions.innerHTML = '<span class="voice-result-removed">取り消しました</span>';
+        });
+        setLastAIAddedIds(getLastAIAddedIds().filter(x => Number(x) !== targetId));
+    }
+};
+
+window.redoVoiceFood = function (id) {
+    const targetId = Number(id);
+    const item = lst.find(x => Number(x.id) === targetId);
+    const cleanName = stripAIPrefix(item?.N);
+    if (targetId && typeof deleteLogIds === 'function') deleteLogIds([targetId], "voice-redo", true);
+    if (cleanName) {
+        const input = document.getElementById('v-chat-input');
+        if (input) {
+            input.value = cleanName;
+            input.disabled = false;
+            input.focus();
+        }
+    }
+    document.querySelectorAll(`.voice-result-card[data-log-id="${targetId}"]`).forEach(card => {
+        card.classList.add('is-removed');
+        const actions = card.querySelector('.voice-result-actions');
+        if (actions) actions.innerHTML = '<span class="voice-result-removed">入れ直し待ち</span>';
+    });
+    setLastAIAddedIds(getLastAIAddedIds().filter(x => Number(x) !== targetId));
+    showToast(cleanName ? "入力欄に戻しました" : "入れ直してください");
+};
+
 // ▼▼▼ メッセージ送信処理 ▼▼▼
 
 async function sendTamaChat() {
@@ -708,10 +782,13 @@ function tryHandleLocalVoiceMealLog(text, loadingId) {
     const foods = parseLocalVoiceMealFoods(text);
     if (foods.length === 0) return false;
     const newlyAddedIds = [];
+    const newlyAddedItems = [];
     foods.forEach((food, idx) => {
         const newId = Date.now() + idx + Math.floor(Math.random() * 1000);
-        lst.push({ id: newId, N: "🤖 " + food.N, P: food.P, F: food.F, C: food.C, A: food.A, Cal: food.Cal, U: "AI", time: food.time });
+        const item = { id: newId, N: "🤖 " + food.N, P: food.P, F: food.F, C: food.C, A: food.A, Cal: food.Cal, U: "AI", time: food.time };
+        lst.push(item);
         newlyAddedIds.push(newId);
+        newlyAddedItems.push(item);
     });
     localStorage.setItem('tf_dat', JSON.stringify(lst));
     if (typeof ren === 'function') ren();
@@ -720,7 +797,7 @@ function tryHandleLocalVoiceMealLog(text, loadingId) {
     removeMsg(loadingId);
     const names = foods.map(f => f.N).join("、");
     const reply = `${names}を登録しました。※分量が違う場合は教えてください。`;
-    addChatMsg('bot', reply, true);
+    addChatMsg('bot', reply + buildVoiceResultCards(newlyAddedItems), true);
     chatHistory.push({ role: 'model', text: reply });
     if (chatHistory.length > 6) chatHistory.shift();
     return true;
@@ -1189,10 +1266,13 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
         }
 
         const newlyAddedIds = [];
+        const newlyAddedItems = [];
         addedFoods.forEach(food => {
             const newId = Date.now() + Math.floor(Math.random() * 1000);
-            lst.push({ id: newId, N: "🤖 " + food.N, P: food.P, F: food.F, C: food.C, A: food.A, Cal: food.Cal, U: "AI", time: food.time });
+            const item = { id: newId, N: "🤖 " + food.N, P: food.P, F: food.F, C: food.C, A: food.A, Cal: food.Cal, U: "AI", time: food.time };
+            lst.push(item);
             newlyAddedIds.push(newId);
+            newlyAddedItems.push(item);
             stateChanged = true;
         });
 
@@ -1207,6 +1287,9 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
             localStorage.setItem('tf_dat', JSON.stringify(lst)); ren(); upd(); window.scrollTo({ top: 0, behavior: 'smooth' });
         }
         if (newlyAddedIds.length > 0) setLastAIAddedIds(newlyAddedIds);
+        if (isVoiceMode && newlyAddedItems.length > 0) {
+            appendToBotMessage(newMsgId, buildVoiceResultCards(newlyAddedItems));
+        }
 
         // ★改善箇所：記憶喪失対策として、「生テキスト(コマンド込み)」をAI側に渡す会話履歴として記憶
         chatHistory.push({ role: 'model', text: rawText });

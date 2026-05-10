@@ -5647,3 +5647,84 @@ body {
 .alc-sub-row .macro-cal-pill {
     color: var(--my);
 }
+
+.voice-result-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.voice-result-card {
+    border: 1px solid #f6cfe0;
+    background: #fff7fb;
+    border-radius: 14px;
+    padding: 10px;
+}
+
+.voice-result-card.is-removed {
+    opacity: 0.62;
+}
+
+.voice-result-name {
+    color: #102033;
+    font-size: 14px;
+    font-weight: 900;
+    line-height: 1.35;
+}
+
+.voice-result-macros {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    color: #475569;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.voice-result-macros strong {
+    margin-left: auto;
+    color: #ef4f8d;
+    font-size: 14px;
+    font-weight: 900;
+}
+
+.voice-log-a {
+    color: #9b59b6;
+}
+
+.voice-result-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 9px;
+}
+
+.voice-result-actions button {
+    border: 0;
+    border-radius: 999px;
+    padding: 8px 10px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 900;
+}
+
+.voice-result-actions button:first-child {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.voice-result-actions button:last-child {
+    background: #ffe5f0;
+    color: #ef4f8d;
+}
+
+.voice-result-removed {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 900;
+}
