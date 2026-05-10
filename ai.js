@@ -103,7 +103,7 @@ document.addEventListener('DOMContentLoaded', syncVoiceAutoSendUI);
 function getAIModelPreference() {
     const saved = localStorage.getItem(AI_MODEL_STORAGE_KEY);
     if (['gemma4-26b', 'gemma4-31b', 'gemini31-lite', 'gemini25-lite'].includes(saved)) return saved;
-    return 'gemma4-26b';
+    return 'gemini31-lite';
 }
 
 window.setAIModelPreference = function (value) {
@@ -113,7 +113,7 @@ window.setAIModelPreference = function (value) {
         'gemini31-lite': '3.1 Flash Lite',
         'gemini25-lite': '2.5 Flash Lite'
     };
-    const next = labels[value] ? value : 'gemma4-26b';
+    const next = labels[value] ? value : 'gemini31-lite';
     localStorage.setItem(AI_MODEL_STORAGE_KEY, next);
     const sel = document.getElementById('ai-model-select');
     if (sel && sel.value !== next) sel.value = next;
