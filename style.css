@@ -5651,8 +5651,8 @@ body {
 .voice-result-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    margin-top: 10px;
+    gap: 6px;
+    margin-top: 8px;
 }
 
 .voice-result-card {
@@ -5660,11 +5660,11 @@ body {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     border: 1px solid #f6cfe0;
     background: #fff7fb;
-    border-radius: 14px;
-    padding: 9px 10px;
+    border-radius: 12px;
+    padding: 8px 9px;
 }
 
 .voice-result-card.is-removed {
@@ -5674,25 +5674,25 @@ body {
 
 .voice-result-name {
     color: #102033;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 900;
-    line-height: 1.35;
+    line-height: 1.25;
 }
 
 .voice-result-macros {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
-    margin-top: 6px;
+    gap: 7px;
+    margin-top: 4px;
     color: #475569;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 800;
 }
 
 .voice-result-macros strong {
     color: #ef4f8d;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 900;
 }
 
@@ -5703,16 +5703,16 @@ body {
 .voice-result-actions {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 6px;
-    min-width: 72px;
+    gap: 5px;
+    min-width: 68px;
 }
 
 .voice-result-actions button {
     border: 0;
     border-radius: 999px;
-    padding: 7px 9px;
+    padding: 6px 8px;
     cursor: pointer;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 900;
 }
 
@@ -5770,11 +5770,18 @@ body {
 
 .voice-result-message.bot .text {
     max-width: 100%;
+    padding: 8px 10px;
+    line-height: 1.35;
+    white-space: normal;
+}
+
+.voice-result-message.bot .text details {
+    margin-top: 6px !important;
 }
 
 @media (min-width: 390px) {
     .voice-result-actions {
         grid-template-columns: 1fr 1fr;
-        min-width: 150px;
+        min-width: 136px;
     }
 }
