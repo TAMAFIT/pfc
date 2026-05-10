@@ -102,15 +102,22 @@ document.addEventListener('DOMContentLoaded', syncVoiceAutoSendUI);
 
 function getAIModelPreference() {
     const saved = localStorage.getItem(AI_MODEL_STORAGE_KEY);
-    return saved === 'gemini31-lite' ? 'gemini31-lite' : 'gemini25-lite';
+    if (['gemma4-26b', 'gemma4-31b', 'gemini31-lite', 'gemini25-lite'].includes(saved)) return saved;
+    return 'gemma4-26b';
 }
 
 window.setAIModelPreference = function (value) {
-    const next = value === 'gemini31-lite' ? 'gemini31-lite' : 'gemini25-lite';
+    const labels = {
+        'gemma4-26b': 'Gemma 4 26B',
+        'gemma4-31b': 'Gemma 4 31B',
+        'gemini31-lite': '3.1 Flash Lite',
+        'gemini25-lite': '2.5 Flash Lite'
+    };
+    const next = labels[value] ? value : 'gemma4-26b';
     localStorage.setItem(AI_MODEL_STORAGE_KEY, next);
     const sel = document.getElementById('ai-model-select');
     if (sel && sel.value !== next) sel.value = next;
-    showToast(next === 'gemini31-lite' ? 'AIモデル: 3.1 Flash Lite' : 'AIモデル: 2.5 Flash Lite');
+    showToast(`AIモデル: ${labels[next]}`);
 };
 
 function initAIModelPreferenceUI() {
