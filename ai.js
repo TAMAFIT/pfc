@@ -325,6 +325,9 @@ function buildVoiceResultCards(items) {
                 <button type="button" onclick="undoVoiceFood(${Number(item.id)})">取り消し</button>
                 <button type="button" onclick="redoVoiceFood(${Number(item.id)})">入れ直す</button>
             </div>
+            <div class="voice-result-restore-layer">
+                <button type="button" onclick="restoreVoiceFood(${Number(item.id)})">元に戻す</button>
+            </div>
         </div>`;
     }).join("");
     return rows ? `<div class="voice-result-list">${rows}</div>` : "";
@@ -338,18 +341,32 @@ function appendToBotMessage(messageId, html) {
     if (vMsgEl) vMsgEl.innerHTML += html;
 }
 
+function markVoiceResultMessage(messageId) {
+    document.getElementById(messageId)?.classList.add('voice-result-message');
+    document.getElementById(messageId + '-v')?.classList.add('voice-result-message');
+}
+
 window.undoVoiceFood = function (id) {
     const targetId = Number(id);
     if (!targetId) return;
     const count = typeof deleteLogIds === 'function' ? deleteLogIds([targetId], "voice-card", true) : 0;
     if (count > 0) {
-        document.querySelectorAll(`.voice-result-card[data-log-id="${targetId}"]`).forEach(card => {
-            card.classList.add('is-removed');
-            const actions = card.querySelector('.voice-result-actions');
-            if (actions) actions.innerHTML = '<span class="voice-result-removed">取り消しました</span>';
-        });
+        markVoiceCardRemoved(targetId, window.__lastDeleteTrashIds || []);
         setLastAIAddedIds(getLastAIAddedIds().filter(x => Number(x) !== targetId));
     }
+};
+
+window.restoreVoiceFood = function (id) {
+    const targetId = Number(id);
+    const card = document.querySelector(`.voice-result-card[data-log-id="${targetId}"]`);
+    const trashIds = (card?.dataset.trashIds || "").split(",").map(Number).filter(Boolean);
+    if (trashIds.length > 0 && typeof restoreDeletedTrashIds === 'function') {
+        restoreDeletedTrashIds(trashIds);
+    }
+    document.querySelectorAll(`.voice-result-card[data-log-id="${targetId}"]`).forEach(el => {
+        el.classList.remove('is-removed');
+        el.dataset.trashIds = "";
+    });
 };
 
 window.redoVoiceFood = function (id) {
@@ -365,14 +382,49 @@ window.redoVoiceFood = function (id) {
             input.focus();
         }
     }
-    document.querySelectorAll(`.voice-result-card[data-log-id="${targetId}"]`).forEach(card => {
-        card.classList.add('is-removed');
-        const actions = card.querySelector('.voice-result-actions');
-        if (actions) actions.innerHTML = '<span class="voice-result-removed">入れ直し待ち</span>';
-    });
+    removeVoiceResultCards([targetId]);
     setLastAIAddedIds(getLastAIAddedIds().filter(x => Number(x) !== targetId));
     showToast(cleanName ? "入力欄に戻しました" : "入れ直してください");
 };
+
+function markVoiceCardRemoved(id, trashIds = []) {
+    const targetId = Number(id);
+    document.querySelectorAll(`.voice-result-card[data-log-id="${targetId}"]`).forEach(card => {
+        card.classList.add('is-removed');
+        card.dataset.trashIds = (trashIds || []).map(Number).filter(Boolean).join(",");
+    });
+}
+
+function removeVoiceResultCards(ids) {
+    const idSet = new Set((ids || []).map(Number).filter(Boolean));
+    if (idSet.size === 0) return;
+    document.querySelectorAll('.voice-result-card').forEach(card => {
+        if (idSet.has(Number(card.dataset.logId))) card.remove();
+    });
+    document.querySelectorAll('.voice-result-list').forEach(list => {
+        if (!list.querySelector('.voice-result-card')) list.remove();
+    });
+    document.querySelectorAll('.voice-result-message').forEach(msg => {
+        if (!msg.querySelector('.voice-result-card')) msg.remove();
+    });
+}
+
+window.addEventListener('pfc:logs-deleted', event => {
+    const detail = event.detail || {};
+    const ids = detail.ids || [];
+    if (detail.source === 'voice-card') return;
+    removeVoiceResultCards(ids);
+});
+
+window.addEventListener('pfc:logs-restored', event => {
+    const ids = (event.detail && event.detail.ids) || [];
+    ids.forEach(id => {
+        document.querySelectorAll(`.voice-result-card[data-log-id="${Number(id)}"]`).forEach(card => {
+            card.classList.remove('is-removed');
+            card.dataset.trashIds = "";
+        });
+    });
+});
 
 // ▼▼▼ メッセージ送信処理 ▼▼▼
 
@@ -804,7 +856,8 @@ function tryHandleLocalVoiceMealLog(text, loadingId) {
     removeMsg(loadingId);
     const names = foods.map(f => f.N).join("、");
     const reply = `${names}を登録しました。※分量が違う場合は教えてください。`;
-    addChatMsg('bot', reply + buildVoiceResultCards(newlyAddedItems), true);
+    const resultMsgId = addChatMsg('bot', reply + buildVoiceResultCards(newlyAddedItems), true);
+    markVoiceResultMessage(resultMsgId);
     chatHistory.push({ role: 'model', text: reply });
     if (chatHistory.length > 6) chatHistory.shift();
     return true;
@@ -1296,6 +1349,7 @@ async function processAIChat(text, loadingId, isVoiceMode = false, imageBase64 =
         if (newlyAddedIds.length > 0) setLastAIAddedIds(newlyAddedIds);
         if (isVoiceMode && newlyAddedItems.length > 0) {
             appendToBotMessage(newMsgId, buildVoiceResultCards(newlyAddedItems));
+            markVoiceResultMessage(newMsgId);
         }
 
         // ★改善箇所：記憶喪失対策として、「生テキスト(コマンド込み)」をAI側に渡す会話履歴として記憶

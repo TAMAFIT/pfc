@@ -68,11 +68,13 @@ function deleteLogIds(ids, source = "manual", showUndo = true) {
     const targets = lst.filter(item => targetIds.includes(Number(item.id)));
     if (targets.length === 0) return 0;
     const trashIds = moveDeletedItemsToTrash(targets, source);
+    window.__lastDeleteTrashIds = trashIds;
     lst = lst.filter(item => !targetIds.includes(Number(item.id)));
     sv();
     ren();
     upd();
     if (showUndo) showDeleteUndo(targets.length, trashIds);
+    window.dispatchEvent(new CustomEvent('pfc:logs-deleted', { detail: { ids: targetIds, source, trashIds } }));
     return targets.length;
 }
 
@@ -91,6 +93,7 @@ function restoreDeletedTrashIds(trashIds) {
     ren();
     renderDeletedTodayPanel();
     upd();
+    window.dispatchEvent(new CustomEvent('pfc:logs-restored', { detail: { ids: restoreItems.map(entry => Number(entry.item.id)).filter(Boolean), trashIds: ids } }));
     if (typeof showToast === 'function') showToast(`${restoreItems.length}件を元に戻しました`);
 }
 
