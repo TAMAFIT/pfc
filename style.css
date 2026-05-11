@@ -922,6 +922,10 @@ body.cheat-mode .footer-btn.btn-primary {
     border: 2px solid #3498db;
 }
 
+.inp-sec.manual-inside-actions {
+    margin: 14px 0 16px;
+}
+
 label {
     display: block;
     margin-bottom: 8px;
@@ -1082,6 +1086,50 @@ label {
 #amt-area {
     display: none;
     margin-top: 20px;
+}
+
+.amt-close-btn {
+    display: none;
+}
+
+#amt-area.floating-amount-panel {
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    top: var(--amount-panel-top, 84px);
+    bottom: auto;
+    z-index: 10030;
+    max-height: none;
+    overflow: visible;
+    margin-top: 0;
+    padding: 14px;
+    border: 1px solid rgba(240, 82, 141, 0.22);
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.98);
+    box-shadow: 0 18px 46px rgba(23, 32, 51, 0.24);
+}
+
+#amt-area.floating-amount-panel .amt-close-btn {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: inline-flex;
+    float: right;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 7px 14px;
+    border: 0;
+    border-radius: 999px;
+    background: #f2f4f7;
+    color: #475467;
+    font-size: 12px;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+#amt-area.floating-amount-panel label {
+    margin-top: 0;
 }
 
 .amt-btns {
@@ -5584,7 +5632,10 @@ body {
     margin-top: 0;
     border: 1px solid rgba(240, 82, 141, 0.22);
     border-radius: 18px;
+    background: rgba(255, 255, 255, 0.98);
     box-shadow: 0 18px 44px rgba(23, 32, 51, 0.18);
+    overflow-y: auto;
+    overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
 }
 
@@ -5758,7 +5809,7 @@ body {
 }
 
 .app-build-version::after {
-    content: "V23";
+    content: "V24";
     font-size: 9px;
 }
 

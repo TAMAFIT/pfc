@@ -455,28 +455,50 @@ function shwList(c, btn) {
         d.appendChild(actBtn); l.appendChild(d);
     });
     l.style.display = 'block';
-    positionFoodListOverlay();
+    positionFoodListOverlay(btn);
+    requestAnimationFrame(ensureFoodListVisible);
 }
 
-function positionFoodListOverlay() {
+function positionFoodListOverlay(anchorBtn) {
     const l = document.getElementById('f-list');
     const cats = document.getElementById('cat-btns');
     const panel = document.getElementById('manual-inp-sec');
     if (!l || !cats || !panel || l.style.display !== 'block') return;
-    const catRect = cats.getBoundingClientRect();
-    const panelRect = panel.getBoundingClientRect();
-    const side = Math.max(12, panelRect.left);
-    l.style.position = 'fixed';
-    l.style.left = side + 'px';
-    l.style.right = Math.max(12, window.innerWidth - panelRect.right) + 'px';
-    l.style.top = Math.min(catRect.bottom + 8, window.innerHeight - 180) + 'px';
-    l.style.maxHeight = Math.max(180, window.innerHeight - catRect.bottom - 28) + 'px';
+    const activeBtn = anchorBtn || cats.querySelector('.c-btn.act');
+    const top = (activeBtn ? activeBtn.offsetTop + activeBtn.offsetHeight : cats.offsetTop + cats.offsetHeight) + 8;
+    l.style.position = 'absolute';
+    l.style.left = '14px';
+    l.style.right = '14px';
+    l.style.top = top + 'px';
+    l.style.maxHeight = 'min(46vh, 330px)';
+}
+
+function ensureFoodListVisible() {
+    const l = document.getElementById('f-list');
+    if (!l || l.style.display !== 'block') return;
+    const rect = l.getBoundingClientRect();
+    const head = l.querySelector('.list-head');
+    const rows = Array.from(l.querySelectorAll('.f-btn')).slice(0, 5);
+    const headHeight = head ? head.offsetHeight : 0;
+    const rowHeight = rows.reduce((sum, row) => sum + (row.offsetHeight || 56), 0);
+    const desiredBottom = Math.min(rect.bottom, rect.top + headHeight + rowHeight);
+    const topLimit = 82;
+    const bottomLimit = window.innerHeight - 92;
+    let delta = 0;
+    if (rect.top < topLimit) {
+        delta = rect.top - topLimit;
+    } else if (desiredBottom > bottomLimit) {
+        delta = desiredBottom - bottomLimit + 8;
+    }
+    if (Math.abs(delta) > 2) {
+        window.scrollBy({ top: delta, behavior: 'smooth' });
+    }
 }
 
 window.addEventListener('resize', positionFoodListOverlay);
 window.addEventListener('scroll', positionFoodListOverlay, true);
 
-function clsList() {
+function clsList(shouldReturnToCategories = true) {
     const l = document.getElementById('f-list');
     if (l) {
         l.style.display = 'none';
@@ -487,10 +509,47 @@ function clsList() {
         l.style.maxHeight = '';
     }
     document.querySelectorAll('.c-btn').forEach(x => x.classList.remove('act'));
+    if (shouldReturnToCategories) scrollManualCategoriesToCenter();
+}
+
+function getFloatingPanelTop() {
+    const l = document.getElementById('f-list');
+    if (l && l.style.display === 'block' && l.style.top) return l.style.top;
+    const activeBtn = document.querySelector('#cat-btns .c-btn.act');
+    const cats = document.getElementById('cat-btns');
+    const top = activeBtn ? activeBtn.offsetTop + activeBtn.offsetHeight + 8 : ((cats ? cats.offsetTop + cats.offsetHeight : 0) + 8);
+    return `${top}px`;
+}
+
+function showFloatingAmountPanel(topValue) {
+    const amtArea = document.getElementById('amt-area');
+    if (!amtArea) return null;
+    amtArea.style.display = 'block';
+    amtArea.classList.add('floating-amount-panel');
+    amtArea.style.setProperty('--amount-panel-top', topValue || getFloatingPanelTop());
+    return amtArea;
+}
+
+function ensureAmountPanelVisible() {
+    const amtArea = document.getElementById('amt-area');
+    if (!amtArea || amtArea.style.display !== 'block' || !amtArea.classList.contains('floating-amount-panel')) return;
+    const rect = amtArea.getBoundingClientRect();
+    const topLimit = 82;
+    const bottomLimit = window.innerHeight - 28;
+    let delta = 0;
+    if (rect.top < topLimit) {
+        delta = rect.top - topLimit;
+    } else if (rect.bottom > bottomLimit) {
+        delta = rect.bottom - bottomLimit + 8;
+    }
+    if (Math.abs(delta) > 2) {
+        window.scrollBy({ top: delta, behavior: 'smooth' });
+    }
 }
 
 function selFd(i) {
-    selIdx = i; editIdx = -1; document.getElementById('btn-reg').textContent = "リストに追加する"; clsList(); document.getElementById('amt-area').style.display = 'block';
+    const amountTop = getFloatingPanelTop();
+    selIdx = i; editIdx = -1; document.getElementById('btn-reg').textContent = "リストに追加する"; clsList(false); showFloatingAmountPanel(amountTop);
     const d = DB[i]; const r = document.getElementById('rice-btns'); const p = document.getElementById('pst-btns'); r.innerHTML = ''; p.innerHTML = ''; r.style.display = 'none';
     if (d[1].includes("白米") || d[1].includes("玄米") || d[1].includes("オート")) { r.style.display = 'grid';[{ l: "100", v: 100, s: "小盛" }, { l: "150", v: 150, s: "普通" }, { l: "250", v: 250, s: "大盛" }, { l: "200", v: 200, s: "" }, { l: "300", v: 300, s: "" }, { l: "400", v: 400, s: "" }].forEach(o => mkBtn(o.l, o.v, r, o.s)); }
     else if (d[3].includes('g')) { [50, 100, 150, 200, 250].forEach(v => mkBtn(v, v, p)); } else { [0.5, 1, 2, 3].forEach(v => mkBtn(v, v, p)); }
@@ -511,18 +570,19 @@ function selFd(i) {
                 btn.classList.add('sel');
             }
         });
-        document.getElementById('amt-area').scrollIntoView({ behavior: 'smooth' });
+        ensureAmountPanelVisible();
     }, 100);
 }
 
 function selMyFd(i) {
-    selIdx = -1; editIdx = -1; document.getElementById('btn-reg').textContent = "リストに追加する"; clsList(); document.getElementById('amt-area').style.display = 'block';
+    const amountTop = getFloatingPanelTop();
+    selIdx = -1; editIdx = -1; document.getElementById('btn-reg').textContent = "リストに追加する"; clsList(false); showFloatingAmountPanel(amountTop);
     const d = myFoods[i]; document.getElementById('rice-btns').style.display = 'none'; const p = document.getElementById('pst-btns'); p.innerHTML = '';
     [0.5, 1, 2, 3].forEach(v => { const b = document.createElement('div'); b.className = 'a-btn'; b.innerHTML = `<span>${v}個</span>`; b.onclick = () => { document.querySelectorAll('.a-btn').forEach(x => x.classList.remove('sel')); b.classList.add('sel'); document.getElementById('m-mul').value = v; calcM(); }; p.appendChild(b); });
     document.getElementById('reg-bd').style.display = 'block'; document.getElementById('m-time').value = getAutoTime(); document.getElementById('m-name').value = d.N; document.getElementById('m-p').value = d.P; document.getElementById('m-f').value = d.F; document.getElementById('m-c').value = d.C; document.getElementById('m-a').value = d.A || 0; document.getElementById('m-mul').value = 1; document.getElementById('m-cal').value = d.Cal;
     document.getElementById('pv-bar').style.display = 'block'; document.getElementById('pv-name').textContent = d.N;
     let aStr = (TG.alcMode && d.A > 0) ? ` A${d.A}` : ""; document.getElementById('pv-stat').textContent = `${d.Cal}kcal (P${d.P} F${d.F} C${d.C}${aStr})`;
-    setTimeout(() => document.getElementById('amt-area').scrollIntoView({ behavior: 'smooth' }), 100);
+    requestAnimationFrame(ensureAmountPanelVisible);
 }
 
 function regMyFood() {
@@ -558,9 +618,24 @@ function updBd(v) {
 
 function togBd() { const b = document.getElementById('reg-bd'); b.style.display = b.style.display === 'block' ? 'none' : 'block'; }
 function clsBd() { const bd = document.getElementById('reg-bd'); bd.style.display = 'none'; bd.classList.remove('editing'); editIdx = -1; document.getElementById('btn-reg').textContent = "リストに追加する"; }
-function openMan() { selIdx = -1; editIdx = -1; document.getElementById('btn-reg').textContent = "リストに追加する"; document.getElementById('amt-area').style.display = 'block'; document.getElementById('reg-bd').style.display = 'block'; document.getElementById('m-time').value = getAutoTime(); setTimeout(() => document.getElementById('reg-bd').scrollIntoView({ behavior: 'smooth' }), 100); }
+function scrollManualCategoriesToCenter() {
+    const cats = document.getElementById('cat-btns');
+    if (!cats) return;
+    requestAnimationFrame(() => cats.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+}
+function closeAmountPanel() { const amtArea = document.getElementById('amt-area'); if (amtArea) { amtArea.style.display = 'none'; amtArea.classList.remove('floating-amount-panel'); amtArea.style.removeProperty('--amount-panel-top'); } clsBd(); scrollManualCategoriesToCenter(); }
+function placeManualPanelBeforeUtilities() {
+    const manualSection = document.getElementById('manual-inp-sec');
+    const divider = document.querySelector('.main-actions .util-divider');
+    if (manualSection && divider && manualSection.nextElementSibling !== divider) {
+        divider.parentNode.insertBefore(manualSection, divider);
+        manualSection.classList.add('manual-inside-actions');
+    }
+}
+function openMan() { selIdx = -1; editIdx = -1; document.getElementById('btn-reg').textContent = "リストに追加する"; const amtArea = document.getElementById('amt-area'); amtArea.classList.remove('floating-amount-panel'); amtArea.style.display = 'block'; document.getElementById('reg-bd').style.display = 'block'; document.getElementById('m-time').value = getAutoTime(); setTimeout(() => document.getElementById('reg-bd').scrollIntoView({ behavior: 'smooth' }), 100); }
 function openQuickManualInput() {
     const manualSection = document.getElementById('manual-inp-sec');
+    placeManualPanelBeforeUtilities();
     if (manualSection) manualSection.style.display = 'block';
     openMan();
 }
@@ -576,16 +651,16 @@ function addM() {
     if (typeof isCheatDay !== 'undefined' && isCheatDay && typeof recordOnCheatDay !== 'undefined' && !recordOnCheatDay) {
         if (typeof showToast === 'function') showToast("🎉 チートデイなのでゲージへの記録をスキップしたたま！");
         document.getElementById('m-name').value = ''; document.getElementById('m-cal').value = '';
-        document.getElementById('amt-area').style.display = 'none'; clsBd();
-        window.scrollTo(0, 0);
+        const amtArea = document.getElementById('amt-area'); amtArea.style.display = 'none'; amtArea.classList.remove('floating-amount-panel'); amtArea.style.removeProperty('--amount-panel-top'); clsBd(); scrollManualCategoriesToCenter();
         return;
     }
     const p = parseNum(document.getElementById('m-p').value) * m; const f = parseNum(document.getElementById('m-f').value) * m; const c = parseNum(document.getElementById('m-c').value) * m; const a = parseNum(document.getElementById('m-a').value) * m;
     const cal = parseNum(document.getElementById('m-cal').value) || (p * 4 + f * 9 + c * 4 + a * 7);
     const unit = (editIdx >= 0) ? lst[editIdx].U : (selIdx >= 0 ? DB[selIdx][3] : "-");
     const newData = { id: Date.now(), N: n, P: p, F: f, C: c, A: a, Cal: Math.round(cal), U: unit, time: time };
+    const wasEditing = editIdx >= 0;
     if (editIdx >= 0) { newData.id = lst[editIdx].id; lst[editIdx] = newData; editIdx = -1; document.getElementById('btn-reg').textContent = "リストに追加する"; document.getElementById('reg-bd').classList.remove('editing'); } else { lst.push(newData); }
-    sv(); ren(); upd(); document.getElementById('amt-area').style.display = 'none'; clsBd(); document.getElementById('m-name').value = ''; document.getElementById('m-cal').value = ''; window.scrollTo(0, 0);
+    sv(); ren(); upd(); if (typeof showToast === 'function') showToast(wasEditing ? '\u66F4\u65B0\u3057\u307E\u3057\u305F' : '\u8FFD\u52A0\u3057\u307E\u3057\u305F'); const amtArea = document.getElementById('amt-area'); amtArea.style.display = 'none'; amtArea.classList.remove('floating-amount-panel'); amtArea.style.removeProperty('--amount-panel-top'); clsBd(); document.getElementById('m-name').value = ''; document.getElementById('m-cal').value = ''; scrollManualCategoriesToCenter();
 }
 
 function ren() {
@@ -617,7 +692,7 @@ function ren() {
 function del(i) { if (!lst[i]) return; deleteLogIds([lst[i].id], "manual", true); }
 function reAdd(i) { lst.push({ ...lst[i], id: Date.now() + Math.floor(Math.random() * 1000) }); sv(); ren(); upd(); }
 function ed(i) {
-    const x = lst[i]; editIdx = i; selIdx = -1; document.getElementById('amt-area').style.display = 'block'; const bd = document.getElementById('reg-bd'); bd.style.display = 'block'; bd.classList.add('editing');
+    const x = lst[i]; editIdx = i; selIdx = -1; const amtArea = document.getElementById('amt-area'); amtArea.classList.remove('floating-amount-panel'); amtArea.style.display = 'block'; const bd = document.getElementById('reg-bd'); bd.style.display = 'block'; bd.classList.add('editing');
     document.getElementById('btn-reg').textContent = "更新して完了"; document.getElementById('m-time').value = x.time || getAutoTime(); document.getElementById('m-name').value = x.N; document.getElementById('m-p').value = x.P; document.getElementById('m-f').value = x.F; document.getElementById('m-c').value = x.C; document.getElementById('m-a').value = x.A || 0; document.getElementById('m-mul').value = 1; document.getElementById('m-cal').value = x.Cal;
     setTimeout(() => bd.scrollIntoView({ behavior: 'smooth' }), 100);
 }

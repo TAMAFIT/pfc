@@ -299,6 +299,7 @@ function toggleHighCarb() {
 
 function toggleManualPanel() {
     const el = document.getElementById('manual-inp-sec');
+    if (typeof placeManualPanelBeforeUtilities === 'function') placeManualPanelBeforeUtilities();
     if (el.style.display === 'block') {
         el.style.display = 'none';
     } else {

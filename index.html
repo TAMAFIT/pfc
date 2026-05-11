@@ -27,13 +27,13 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260511-build-v23">
+    <link rel="stylesheet" href="style.css?v=20260512-build-v24">
 </head>
 
 <body>
 
     <div class="header">
-        <div class="app-build-version" aria-label="アプリバージョン">V23</div>
+        <div class="app-build-version" aria-label="アプリバージョン">V24</div>
         <button id="premium-ticket-wrap" class="header-cheat-chip" type="button" onclick="openCheatModal()"
             aria-label="チートデイパス">
             <span class="header-cheat-icon" aria-hidden="true">🎫</span>
@@ -298,6 +298,7 @@
             <div class="cat-grp" id="cat-btns"></div>
             <div id="f-list"></div>
             <div id="amt-area">
+                <button type="button" class="amt-close-btn" onclick="closeAmountPanel()">閉じる</button>
                 <label style="margin-top:10px;">2. 量を選ぶ</label>
                 <div class="amt-btns rice" id="rice-btns" style="display:none;"></div>
                 <div class="amt-btns" id="pst-btns"></div>
