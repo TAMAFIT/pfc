@@ -125,7 +125,10 @@ function confirmPreCheatModal() {
     pendingCheatDate = null;
 }
 
-function openCheatModal() { document.getElementById('cheat-ticket-modal').style.display = 'flex'; }
+function openCheatModal() {
+    if (typeof syncCheatTicketModalState === 'function') syncCheatTicketModalState();
+    document.getElementById('cheat-ticket-modal').style.display = 'flex';
+}
 function closeCheatModal() { document.getElementById('cheat-ticket-modal').style.display = 'none'; }
 
 function prepareCheatToday() {

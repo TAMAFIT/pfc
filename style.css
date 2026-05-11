@@ -5752,6 +5752,124 @@ body {
     display: flex;
 }
 
+/* Compact cheat day entry */
+.app-build-version {
+    font-size: 0 !important;
+}
+
+.app-build-version::after {
+    content: "V21";
+    font-size: 9px;
+}
+
+.container > .premium-ticket-wrap {
+    display: none !important;
+}
+
+.header-cheat-chip {
+    position: absolute;
+    left: 8px;
+    top: calc(20px + env(safe-area-inset-top));
+    z-index: 3;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    max-width: 72px;
+    min-height: 22px;
+    padding: 3px 6px;
+    border: 1px solid rgba(255, 255, 255, 0.36);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
+    box-shadow: 0 6px 14px rgba(140, 30, 80, 0.16);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.header-cheat-chip .header-cheat-icon {
+    font-size: 12px;
+    line-height: 1;
+}
+
+.header-cheat-chip .ticket-badge {
+    min-width: 0;
+    height: auto;
+    padding: 0;
+    border-radius: 0;
+    background: transparent !important;
+    color: #fff;
+    box-shadow: none !important;
+    font-size: 10px;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.header-cheat-chip .ticket-sub {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+}
+
+.header-cheat-chip.is-empty {
+    opacity: 0.72;
+}
+
+.header-cheat-chip.is-reserved {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.cheat-modal-copy {
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 14px;
+    background: #fff8fb;
+    border: 1px solid rgba(245, 82, 141, 0.16);
+    text-align: left;
+}
+
+.cheat-modal-copy strong {
+    display: block;
+    color: #172033;
+    font-size: 15px;
+    font-weight: 900;
+}
+
+.cheat-modal-copy p {
+    margin: 6px 0 8px;
+    color: #687386;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.55;
+}
+
+.cheat-modal-copy em {
+    display: inline-flex;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: #fff0f6;
+    color: #f0528d;
+    font-size: 11px;
+    font-style: normal;
+    font-weight: 900;
+}
+
+.cheat-reserved-actions {
+    display: none;
+    gap: 10px;
+}
+
+.cheat-reserved-actions .m-btn {
+    flex: 1;
+}
+
+#cheat-ticket-modal .m-btn:disabled {
+    opacity: 0.45;
+    filter: grayscale(0.25);
+    cursor: not-allowed;
+}
+
 .voice-result-restore-layer button {
     border: 0;
     border-radius: 999px;

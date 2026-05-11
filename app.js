@@ -313,6 +313,113 @@ function restoreCheatTicket() {
 }
 // ▲▲▲ チートデイチケット管理 ▲▲▲
 
+function syncCheatTicketModalState() {
+    const status = document.getElementById('cheat-ticket-status');
+    const modalBox = document.querySelector('#cheat-ticket-modal .modal-box');
+    if (modalBox && !document.getElementById('cheat-ticket-status')) {
+        const title = modalBox.querySelector('.modal-title');
+        const copy = document.createElement('div');
+        copy.className = 'cheat-modal-copy';
+        copy.innerHTML = '<strong>チートデイパス</strong><p>週に1回のご褒美デー。記録の有無やハイカーボ設定を選べます。</p><em id="cheat-ticket-status">チケットを1枚持っています</em>';
+        if (title && title.nextSibling) modalBox.insertBefore(copy, title.nextSibling);
+        else modalBox.prepend(copy);
+    }
+    const statusEl = document.getElementById('cheat-ticket-status');
+    const todayBtn = document.getElementById('cheat-use-today-btn') || document.querySelector('#cheat-ticket-modal button[onclick="prepareCheatToday()"]');
+    const reserveBtn = document.getElementById('cheat-reserve-btn') || document.querySelector('#cheat-ticket-modal button[onclick="openCheatReserveModal()"]');
+    let reserveActions = document.getElementById('cheat-reserved-actions');
+    if (!reserveActions && reserveBtn && reserveBtn.parentElement) {
+        reserveActions = document.createElement('div');
+        reserveActions.id = 'cheat-reserved-actions';
+        reserveActions.className = 'cheat-reserved-actions';
+        reserveActions.innerHTML = '<button class="m-btn" style="background:#fff0f6; color:#f0528d;" onclick="changeCheatReservation()">日程変更</button><button class="m-btn m-cancel" onclick="cancelCheatReservation()">取消</button>';
+        reserveBtn.parentElement.insertBefore(reserveActions, reserveBtn.nextSibling);
+    }
+    if (!statusEl) return;
+
+    const hasTicket = (TG.cheatTickets || 0) > 0;
+    const reserved = TG.cheatReservedDate && TG.cheatReservedDate !== getCheatLocalDateKey();
+
+    if (reserved) {
+        statusEl.textContent = `${formatCheatStatusDate(TG.cheatReservedDate)}に予約済みです`;
+    } else if (hasTicket) {
+        statusEl.textContent = `チケットを${TG.cheatTickets}枚持っています`;
+    } else if (TG.cheatLastUsedDate) {
+        const diffDays = Math.ceil(Math.abs(new Date() - new Date(TG.cheatLastUsedDate)) / (1000 * 60 * 60 * 24));
+        statusEl.textContent = `あと${Math.max(0, 7 - diffDays)}日で再使用できます`;
+    } else {
+        statusEl.textContent = "現在使えるチケットはありません";
+    }
+
+    if (todayBtn) todayBtn.disabled = !hasTicket;
+    if (reserveBtn) reserveBtn.disabled = !hasTicket;
+    if (reserveActions) reserveActions.style.display = reserved ? 'flex' : 'none';
+}
+
+function refreshHeaderCheatTicket() {
+    const wrap = document.getElementById('premium-ticket-wrap');
+    const badge = document.getElementById('ticket-count-badge');
+    const subText = document.getElementById('ticket-cooldown-text');
+    if (!wrap || !badge || !subText) return false;
+
+    let statusText = "週に1回";
+    wrap.classList.remove('disabled', 'is-empty', 'is-reserved');
+    wrap.onclick = () => { if (typeof openCheatModal === 'function') openCheatModal(); };
+
+    if (TG.cheatTickets <= 0) {
+        wrap.classList.add('is-empty');
+        badge.textContent = `x 0`;
+        if (TG.cheatReservedDate && TG.cheatReservedDate !== getCheatLocalDateKey()) {
+            wrap.classList.add('is-reserved');
+            statusText = `${formatCheatStatusDate(TG.cheatReservedDate)}予約`;
+        } else if (TG.cheatLastUsedDate) {
+            const today = new Date();
+            const diffDays = Math.ceil(Math.abs(today - new Date(TG.cheatLastUsedDate)) / (1000 * 60 * 60 * 24));
+            statusText = `あと${Math.max(0, 7 - diffDays)}日`;
+        } else {
+            statusText = "残りなし";
+        }
+    } else {
+        badge.textContent = `x ${TG.cheatTickets}`;
+    }
+
+    subText.textContent = statusText;
+    wrap.title = `チートデイパス ${badge.textContent} / ${statusText}`;
+    return true;
+}
+
+function checkCheatTicketStatus() {
+    if (TG.cheatTickets === undefined) {
+        TG.cheatTickets = 1;
+        if (TG.cheatLastUsedDate) {
+            const lastUsed = new Date(TG.cheatLastUsedDate);
+            const today = new Date();
+            const diffDays = Math.ceil(Math.abs(today - lastUsed) / (1000 * 60 * 60 * 24));
+            if (diffDays < 7) TG.cheatTickets = 0;
+        }
+    }
+
+    if (TG.cheatReservedDate && TG.cheatReservedDate !== getCheatLocalDateKey()) {
+        TG.cheatTickets = 0;
+    }
+
+    if (!TG.cheatReservedDate && TG.cheatLastUsedDate) {
+        const lastUsed = new Date(TG.cheatLastUsedDate);
+        const today = new Date();
+        const diffDays = Math.ceil(Math.abs(today - lastUsed) / (1000 * 60 * 60 * 24));
+        if (diffDays >= 7 && TG.cheatTickets === 0) {
+            TG.cheatTickets = 1;
+            TG.cheatLastUsedDate = null;
+        }
+    }
+
+    refreshHeaderCheatTicket();
+    syncCheatTicketModalState();
+
+    const mgrTick = document.getElementById('mgr-ticket-count');
+    if (mgrTick) mgrTick.textContent = TG.cheatTickets;
+}
+
 function toggleAlcMode(isInit = false) {
     if (!isInit) { TG.alcMode = document.getElementById('alc-mode-chk').checked; localStorage.setItem('tf_tg', JSON.stringify(TG)); }
     const mtrA = document.getElementById('mtr-a'); const maWrap = document.getElementById('m-a-wrap');
