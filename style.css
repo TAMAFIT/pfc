@@ -5758,7 +5758,7 @@ body {
 }
 
 .app-build-version::after {
-    content: "V21";
+    content: "V22";
     font-size: 9px;
 }
 
@@ -5868,6 +5868,24 @@ body {
     opacity: 0.45;
     filter: grayscale(0.25);
     cursor: not-allowed;
+}
+
+/* Meal proposal moved into the utility action */
+.legacy-meal-gacha-entry {
+    display: none !important;
+}
+
+.utility-actions + .meal-gacha-result {
+    margin: 14px 0 0;
+}
+
+.btn-recipe div:last-child {
+    font-size: 0;
+}
+
+.btn-recipe div:last-child::after {
+    content: "献立提案";
+    font-size: 13px;
 }
 
 .voice-result-restore-layer button {

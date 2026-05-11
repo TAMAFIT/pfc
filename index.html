@@ -27,13 +27,13 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260511-build-v21">
+    <link rel="stylesheet" href="style.css?v=20260511-build-v22">
 </head>
 
 <body>
 
     <div class="header">
-        <div class="app-build-version" aria-label="アプリバージョン">V21</div>
+        <div class="app-build-version" aria-label="アプリバージョン">V22</div>
         <button id="premium-ticket-wrap" class="header-cheat-chip" type="button" onclick="openCheatModal()"
             aria-label="チートデイパス">
             <span class="header-cheat-icon" aria-hidden="true">🎫</span>
@@ -226,14 +226,14 @@
                 🎤 音声で記録
             </button>
 
-            <button class="meal-gacha-btn" onclick="rollMealGacha()">
+            <button class="meal-gacha-btn legacy-meal-gacha-entry" onclick="rollMealGacha()">
                 <span class="meal-gacha-icon">🍽️</span>
                 <span>
                     <strong>今日の献立ガチャ</strong>
                     <small>栄養バランスに合わせて、おすすめレシピを紹介します</small>
                 </span>
             </button>
-            <div id="meal-gacha-result" class="meal-gacha-result" style="display:none;"></div>
+
 
             <div class="sub-actions">
                 <button class="btn-sub-act btn-manual" onclick="toggleManualPanel()">
@@ -277,7 +277,7 @@
                     <div class="icon">📮</div>
                     <div>ご要望</div>
                 </button>
-                <button class="btn-util btn-recipe" onclick="window.open('https://delishkitchen.tv/', '_blank')">
+                <button class="btn-util btn-recipe" onclick="rollMealGacha()">
                     <div class="icon">🍳</div>
                     <div>レシピ</div>
                 </button>
@@ -286,6 +286,7 @@
                     <div>日付･保存</div>
                 </button>
             </div>
+            <div id="meal-gacha-result" class="meal-gacha-result" style="display:none;"></div>
         </div>
 
         <div class="inp-sec" id="manual-inp-sec">
