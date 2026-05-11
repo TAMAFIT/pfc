@@ -5758,7 +5758,7 @@ body {
 }
 
 .app-build-version::after {
-    content: "V22";
+    content: "V23";
     font-size: 9px;
 }
 
@@ -5920,4 +5920,55 @@ body {
         grid-template-columns: 1fr 1fr;
         min-width: 136px;
     }
+}
+
+/* Simplified input/action layout */
+.btn-manual div:last-child,
+.btn-camera div:last-child,
+.utility-actions .btn-body div:last-child {
+    font-size: 0 !important;
+}
+
+.btn-manual div:last-child::after {
+    content: "\30BF\30C3\30D7\5165\529B";
+    font-size: 14px;
+}
+
+.btn-camera div:last-child::after {
+    content: "\30AF\30A4\30C3\30AF\624B\5165\529B";
+    font-size: 14px;
+}
+
+.btn-manual .icon,
+.btn-camera .icon {
+    font-size: 0 !important;
+}
+
+.btn-manual .icon::after {
+    content: "\2328\FE0F";
+    font-size: 26px;
+}
+
+.btn-camera .icon::after {
+    content: "\26A1";
+    font-size: 26px;
+}
+
+.sub-actions > .btn-body,
+.sub-actions > .btn-photo {
+    display: none !important;
+}
+
+.utility-actions .btn-body {
+    background: linear-gradient(135deg, #ffffff, #fff6fa) !important;
+    color: #172033 !important;
+}
+
+.utility-actions .btn-body .icon {
+    color: #f0528d;
+}
+
+.utility-actions .btn-body div:last-child::after {
+    content: "\4F53\7D44\6210";
+    font-size: 12px;
 }

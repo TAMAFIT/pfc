@@ -559,6 +559,11 @@ function updBd(v) {
 function togBd() { const b = document.getElementById('reg-bd'); b.style.display = b.style.display === 'block' ? 'none' : 'block'; }
 function clsBd() { const bd = document.getElementById('reg-bd'); bd.style.display = 'none'; bd.classList.remove('editing'); editIdx = -1; document.getElementById('btn-reg').textContent = "リストに追加する"; }
 function openMan() { selIdx = -1; editIdx = -1; document.getElementById('btn-reg').textContent = "リストに追加する"; document.getElementById('amt-area').style.display = 'block'; document.getElementById('reg-bd').style.display = 'block'; document.getElementById('m-time').value = getAutoTime(); setTimeout(() => document.getElementById('reg-bd').scrollIntoView({ behavior: 'smooth' }), 100); }
+function openQuickManualInput() {
+    const manualSection = document.getElementById('manual-inp-sec');
+    if (manualSection) manualSection.style.display = 'block';
+    openMan();
+}
 
 function calcM() {
     const p = parseNum(document.getElementById('m-p').value); const f = parseNum(document.getElementById('m-f').value); const c = parseNum(document.getElementById('m-c').value); const a = parseNum(document.getElementById('m-a').value); const m = parseNum(document.getElementById('m-mul').value) || 1;

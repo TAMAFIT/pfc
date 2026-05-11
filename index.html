@@ -27,13 +27,13 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260511-build-v22">
+    <link rel="stylesheet" href="style.css?v=20260511-build-v23">
 </head>
 
 <body>
 
     <div class="header">
-        <div class="app-build-version" aria-label="アプリバージョン">V22</div>
+        <div class="app-build-version" aria-label="アプリバージョン">V23</div>
         <button id="premium-ticket-wrap" class="header-cheat-chip" type="button" onclick="openCheatModal()"
             aria-label="チートデイパス">
             <span class="header-cheat-icon" aria-hidden="true">🎫</span>
@@ -240,7 +240,7 @@
                     <div class="icon">⌨️</div>
                     <div>手打ち入力</div>
                 </button>
-                <button class="btn-sub-act btn-camera" onclick="openCameraChoiceModal()">
+                <button class="btn-sub-act btn-camera" onclick="openQuickManualInput()">
                     <div class="icon">📷</div>
                     <div>カメラで記録</div>
                 </button>
@@ -268,9 +268,9 @@
             <hr class="util-divider">
 
             <div class="utility-actions">
-                <button class="btn-util btn-copy" onclick="cpRes()">
-                    <div class="icon">📝</div>
-                    <div>コピー</div>
+                <button class="btn-util btn-body" onclick="openTabPanel('body-content')">
+                    <div class="icon">📉</div>
+                    <div>体組成</div>
                 </button>
                 <button class="btn-util btn-req"
                     onclick="window.open('https://docs.google.com/forms/d/e/1FAIpQLSem4li3oXO5_JFqTUUk40dM_Zej4WInhDPilGAIFUzU97opGg/viewform?usp=publish-editor', '_blank')">
