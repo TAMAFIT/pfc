@@ -15,6 +15,7 @@ let pendingDeleteAllToday = false;
 let lastTamaChatSendText = "";
 let lastTamaChatSendAt = 0;
 let voiceSendInFlight = false;
+let micPermissionReady = localStorage.getItem('tf_mic_permission_ready') === 'true';
 window.clearPendingDeleteAllToday = function () { pendingDeleteAllToday = false; };
 
 // ▼▼▼ トースト通知 ▼▼▼
@@ -129,7 +130,14 @@ document.addEventListener('DOMContentLoaded', initAIModelPreferenceUI);
 
 document.addEventListener('visibilitychange', () => { if (document.hidden) forceStopMic(); });
 window.addEventListener('pagehide', () => forceStopMic());
-window.addEventListener('blur', () => forceStopMic());
+
+function isIOSDevice() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+function shouldAutoStartVoiceMic() {
+    return !isIOSDevice() || micPermissionReady;
+}
 
 function mergeVoiceInput(existingText, newText) {
     const existing = (existingText || "").trim();
@@ -178,7 +186,12 @@ function startRecognition(onStartCallback, onResultCallback) {
     speechHadResult = false;
     speechResultCallback = onResultCallback;
 
-    recognition.onstart = () => { isRecording = true; onStartCallback(); };
+    recognition.onstart = () => {
+        isRecording = true;
+        micPermissionReady = true;
+        localStorage.setItem('tf_mic_permission_ready', 'true');
+        onStartCallback();
+    };
     recognition.onresult = (event) => {
         if (!isRecording) return;
         const result = event.results && event.results[0] && event.results[0][0];
@@ -208,7 +221,11 @@ function startRecognition(onStartCallback, onResultCallback) {
     };
     recognition.onerror = (event) => {
         forceStopMic();
-        if (event.error === 'not-allowed') showToast("マイクの許可がないみたいだたま！\niPhoneのホーム画面からだと使えないことがあるからSafariで開いてたま！");
+        if (event.error === 'not-allowed') {
+            micPermissionReady = false;
+            localStorage.removeItem('tf_mic_permission_ready');
+            showToast("マイクの許可がないみたいだたま！\niPhoneのホーム画面からだと使えないことがあるからSafariで開いてたま！");
+        }
     };
     recognition.onend = () => {
         if (!isRecording) return;

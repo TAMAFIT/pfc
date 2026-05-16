@@ -867,8 +867,11 @@ function openVoiceUI() {
     setTimeout(() => {
         el.classList.add('active');
         // 開いた瞬間に自動でマイクON
-        if (typeof window.toggleVoiceMic === 'function' && typeof isRecording !== 'undefined' && !isRecording) {
+        if (typeof window.toggleVoiceMic === 'function' && typeof isRecording !== 'undefined' && !isRecording && (typeof shouldAutoStartVoiceMic !== 'function' || shouldAutoStartVoiceMic())) {
             window.toggleVoiceMic();
+        } else {
+            const status = document.getElementById('v-status-text');
+            if (status) status.innerText = "マイクOFF";
         }
     }, 10);
 }

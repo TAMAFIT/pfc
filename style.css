@@ -5809,7 +5809,7 @@ body {
 }
 
 .app-build-version::after {
-    content: "V24";
+    content: "V25";
     font-size: 9px;
 }
 
